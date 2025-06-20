@@ -144,3 +144,99 @@ Processing complete!
 2025-06-20 14:05:25,148 - INFO - Found 1 solution files to process
 2025-06-20 14:05:25,149 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
 2025-06-20 14:05:31,927 - INFO - Created visualization for A4s (As, 4s) - Best action: R2.1, EV: 0.010100
+2025-06-20 14:12:30,660 - INFO - Found 1 solution files to process
+2025-06-20 14:12:30,661 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
+2025-06-20 14:12:35,674 - ERROR - Error processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json: list index out of range
+Traceback (most recent call last):
+  File "C:\Users\lucas\Documents\Poker\drills-creator\batch_visualizer.py", line 240, in process_solution_file
+    visualizer.create_visualization()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\poker_table_visualizer.py", line 110, in create_visualization
+    self.player_drawer.draw_player_circles()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\player_drawer.py", line 102, in draw_player_circles
+    x, y = self.config.seat_positions[seat_index]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+IndexError: list index out of range
+2025-06-20 14:12:35,678 - INFO - 
+Processing complete!
+2025-06-20 14:12:35,678 - INFO - Total files: 1
+2025-06-20 14:12:35,678 - INFO - Processed files: 0
+2025-06-20 14:12:35,678 - INFO - Skipped files: 1
+2025-06-20 14:12:35,679 - INFO - Total hands: 169
+2025-06-20 14:12:35,679 - INFO - Filtered hands: 19
+2025-06-20 14:12:35,679 - INFO - Visualizations saved to: visualizations
+2025-06-20 14:17:07,267 - INFO - Found 1 solution files to process
+2025-06-20 14:17:07,268 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
+2025-06-20 14:17:12,332 - ERROR - Error processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json: list index out of range
+Traceback (most recent call last):
+  File "C:\Users\lucas\Documents\Poker\drills-creator\batch_visualizer.py", line 240, in process_solution_file
+    visualizer.create_visualization()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\poker_table_visualizer.py", line 120, in create_visualization
+    other_cards_img, other_cards_draw = self.card_drawer.draw_player_cards()
+                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\card_drawer.py", line 413, in draw_player_cards
+    player_x, player_y = self.config.seat_positions[seat_index]
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+IndexError: list index out of range
+2025-06-20 14:17:12,335 - INFO - 
+Processing complete!
+2025-06-20 14:17:12,335 - INFO - Total files: 1
+2025-06-20 14:17:12,335 - INFO - Processed files: 0
+2025-06-20 14:17:12,335 - INFO - Skipped files: 1
+2025-06-20 14:17:12,335 - INFO - Total hands: 169
+2025-06-20 14:17:12,335 - INFO - Filtered hands: 19
+2025-06-20 14:17:12,336 - INFO - Visualizations saved to: visualizations
+2025-06-20 14:22:34,410 - INFO - Found 1 solution files to process
+2025-06-20 14:22:34,411 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
+2025-06-20 14:22:40,829 - ERROR - Error processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json: list index out of range
+Traceback (most recent call last):
+  File "C:\Users\lucas\Documents\Poker\drills-creator\batch_visualizer.py", line 240, in process_solution_file
+    visualizer.create_visualization()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\poker_table_visualizer.py", line 146, in create_visualization
+    chips_img, chips_draw = self.chip_drawer.draw_player_chips()
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\chip_drawer.py", line 63, in draw_player_chips
+    x, y = self.config.seat_positions[seat_index]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+IndexError: list index out of range
+2025-06-20 14:22:40,835 - INFO - 
+Processing complete!
+2025-06-20 14:22:40,836 - INFO - Total files: 1
+2025-06-20 14:22:40,836 - INFO - Processed files: 0
+2025-06-20 14:22:40,836 - INFO - Skipped files: 1
+2025-06-20 14:22:40,836 - INFO - Total hands: 169
+2025-06-20 14:22:40,837 - INFO - Filtered hands: 19
+2025-06-20 14:22:40,837 - INFO - Visualizations saved to: visualizations
+2025-06-20 14:23:33,317 - INFO - Found 1 solution files to process
+2025-06-20 14:23:33,317 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
+2025-06-20 14:23:39,709 - ERROR - Error processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json: Position 'BB' not found in seat mapping. Cannot draw chips.
+Traceback (most recent call last):
+  File "C:\Users\lucas\Documents\Poker\drills-creator\batch_visualizer.py", line 240, in process_solution_file
+    visualizer.create_visualization()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\poker_table_visualizer.py", line 146, in create_visualization
+    chips_img, chips_draw = self.chip_drawer.draw_player_chips()
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lucas\Documents\Poker\drills-creator\poker_viz\chip_drawer.py", line 59, in draw_player_chips
+    raise ValueError(
+        f"Position '{position}' not found in seat mapping. Cannot draw chips."
+    )
+ValueError: Position 'BB' not found in seat mapping. Cannot draw chips.
+2025-06-20 14:23:39,716 - INFO - 
+Processing complete!
+2025-06-20 14:23:39,716 - INFO - Total files: 1
+2025-06-20 14:23:39,716 - INFO - Processed files: 0
+2025-06-20 14:23:39,717 - INFO - Skipped files: 1
+2025-06-20 14:23:39,717 - INFO - Total hands: 169
+2025-06-20 14:23:39,717 - INFO - Filtered hands: 19
+2025-06-20 14:23:39,717 - INFO - Visualizations saved to: visualizations
+2025-06-20 14:25:06,910 - INFO - Found 1 solution files to process
+2025-06-20 14:25:06,911 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
+2025-06-20 14:25:13,711 - INFO - Created visualization for A4s (As, 4s) - Best action: R2.1, EV: 0.010100
+2025-06-20 14:25:20,374 - INFO - Created visualization for A7s (As, 7s) - Best action: R2.1, EV: 0.010580
+2025-06-20 14:29:20,627 - INFO - Found 1 solution files to process
+2025-06-20 14:29:20,627 - INFO - Processing poker_solutions\MTTGeneral_ICM8m200PTSTART\depth_200_125\preflop\no_actions\UTG\hero_UTG_0.json
+2025-06-20 14:29:28,342 - INFO - Created visualization for A4s (As, 4s) - Best action: R2.1, EV: 0.010100

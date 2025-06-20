@@ -20,6 +20,7 @@ class GameDataProcessor:
         """Extract relevant information from the JSON data."""
         self.game = self.data.get("game", {})
         self.players = self.game.get("players", [])
+        self.num_players = len(self.players)
         self.pot = float(self.game.get("pot", 0))
         self.active_position = self.game.get("active_position", "")
         self.board = self.game.get("board", "")
@@ -47,18 +48,20 @@ class GameDataProcessor:
         Returns:
             dict: Mapping from poker positions to seat indices
         """
-        # Define standard poker table positions in correct order (clockwise from UTG)
-        standard_positions = [
-            "UTG",
-            "UTG+1",
-            "UTG+2",
-            "LJ",
-            "HJ",
-            "CO",
-            "BTN",
-            "SB",
-            "BB",
-        ]
+        # Define standard poker table positions based on player count
+        standard_positions_by_count = {
+            9: ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"],
+            8: ["UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB", "BB"],
+            7: ["UTG", "LJ", "HJ", "CO", "BTN", "SB", "BB"],
+            6: ["LJ", "HJ", "CO", "BTN", "SB", "BB"],
+            5: ["HJ", "CO", "BTN", "SB", "BB"],
+            4: ["CO", "BTN", "SB", "BB"],
+            3: ["BTN", "SB", "BB"],
+            2: ["SB", "BB"],
+        }
+
+        # Get the standard positions for the current number of players
+        standard_positions = standard_positions_by_count.get(self.num_players, [])
 
         # Find the hero player
         hero_player = self.hero
@@ -66,16 +69,16 @@ class GameDataProcessor:
 
         # Calculate position mapping based on hero position
         position_to_seat = {}
-        if hero_position:
+        if hero_position and standard_positions:
             try:
                 # Get the index of hero position in standard_positions
                 hero_index = standard_positions.index(hero_position)
 
                 # Adjust seats based on hero position
                 # Rearrange positions so hero is at seat 0 (bottom middle)
-                for i in range(9):  # 9 seats
+                for i in range(self.num_players):
                     # Calculate position index with wrapping (clockwise from hero)
-                    pos_idx = (hero_index + i) % 9
+                    pos_idx = (hero_index + i) % self.num_players
                     position = standard_positions[pos_idx]
 
                     # Assign to the appropriate seat

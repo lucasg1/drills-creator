@@ -48,8 +48,8 @@ class PlayerDrawer:
                 # Fallback for unknown positions
                 seat_index = 8  # Default to bottom left
 
-            # Get the position coordinates
-            x, y = self.config.seat_positions[seat_index]
+            # Get the position coordinates safely
+            x, y = self._get_safe_seat_position(seat_index)
 
             # Determine player color
             is_active = (
@@ -65,9 +65,9 @@ class PlayerDrawer:
             elif is_active:
                 player_color = self.config.active_player_color
             else:
-                player_color = self.config.player_color
-
-            # Draw player background circle and foreground rectangle
+                player_color = (
+                    self.config.player_color
+                )  # Draw player background circle and foreground rectangle
             self._draw_player_elements(x, y, player_color, player)
 
             # Draw dealer button if this player is the dealer
@@ -96,10 +96,12 @@ class PlayerDrawer:
                 seat_index = position_to_seat[position]
             else:
                 # Fallback for unknown positions
-                seat_index = 8  # Default to bottom left
+                seat_index = min(
+                    8, len(self.config.seat_positions) - 1
+                )  # Default to bottom left or last available
 
-            # Get the position coordinates
-            x, y = self.config.seat_positions[seat_index]
+            # Get the position coordinates safely
+            x, y = self._get_safe_seat_position(seat_index)
 
             # Determine player color
             is_active = (
@@ -154,12 +156,12 @@ class PlayerDrawer:
             # Calculate rectangle dimensions
             player_radius = self.config.player_radius
             rect_width = player_radius * 1.8
-            rect_height = player_radius * 1.2
-
-            # Draw the rectangle with player info
+            rect_height = player_radius * 1.2  # Draw the rectangle with player info
             self._draw_player_rectangle(
                 x, y, rect_width, rect_height, player_color, player
-            )  # Draw dealer button if this player is the dealer
+            )
+
+            # Draw dealer button if this player is the dealer
             if pos_info["is_dealer"]:
                 self._draw_dealer_button(x, y)
 
@@ -491,3 +493,22 @@ class PlayerDrawer:
             fill=(0, 0, 0, 255),
             font=self.player_font,
         )  # NOTE: draw_player_chips method has been moved to chip_drawer.py
+
+    def _get_safe_seat_position(self, seat_index):
+        """Safely get the seat position even if the index is out of range.
+
+        Args:
+            seat_index: The seat index to get the position for
+
+        Returns:
+            tuple: The (x, y) coordinates for the seat position
+        """
+        # Check if the seat_index is out of range
+        if seat_index >= len(self.config.seat_positions):
+            print(
+                f"Warning: Seat index {seat_index} is out of range (max: {len(self.config.seat_positions)-1})"
+            )
+            # Use the first seat position (hero) as a fallback
+            seat_index = 0
+
+        return self.config.seat_positions[seat_index]

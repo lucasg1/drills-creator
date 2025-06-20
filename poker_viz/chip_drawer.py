@@ -56,8 +56,9 @@ class ChipDrawer:
             elif position in position_to_seat:
                 seat_index = position_to_seat[position]
             else:
-                # Fallback for unknown positions
-                seat_index = 8  # Default to bottom left
+                raise ValueError(
+                    f"Position '{position}' not found in seat mapping. Cannot draw chips."
+                )
 
             # Get the position coordinates
             x, y = self.config.seat_positions[seat_index]

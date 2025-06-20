@@ -7,13 +7,16 @@ from PIL import ImageFont
 
 
 class PokerTableConfig:
-    def __init__(self, scale_factor=2):
+    def __init__(self, scale_factor=2, num_players=8):
         # Image dimensions - base dimensions
         self.base_width = 1200
         self.base_height = 800
 
         # Scale factor for high-res rendering
         self.scale_factor = scale_factor
+
+        # Number of players
+        self.num_players = num_players
 
         # Actual dimensions (higher resolution for better anti-aliasing)
         self.width = self.base_width * self.scale_factor
@@ -39,58 +42,136 @@ class PokerTableConfig:
         self.hero_player_color = (80, 160, 80, 255)  # Green for hero
         self.folded_player_color = (50, 50, 50, 255)  # Dark gray for folded
         self.dealer_button_color = (220, 220, 220, 255)  # Light gray dealer button
-
         # Card colors
         self.card_bg = (255, 255, 255, 255)
         self.red_suits = (220, 40, 40, 255)
         self.black_suits = (0, 0, 0, 255)
 
         # Define seat positions
-        self._init_seat_positions()
+        self._init_seat_positions(self.num_players)
 
-    def _init_seat_positions(self):
-        """Initialize seat positions around the table for 9 players."""
-        # Fixed positions around the table (9 seats)
-        # Indices: 0=bottom-middle (hero), 1=bottom-left, 2=left-middle, 3=top-left,
-        #          4=top-middle, 5=top-right, 6=right-top, 7=right-bottom, 8=bottom-right
-        self.seat_positions = [
-            (
-                self.table_center_x,
-                self.table_center_y + self.table_height * 0.7,
-            ),  # Bottom middle (hero)
-            (
-                self.table_center_x - self.table_width * 0.25,
-                self.table_center_y + self.table_height * 0.7,
-            ),  # Bottom left
-            (
-                self.table_center_x - self.table_width * 0.5,
-                self.table_center_y,
-            ),  # Left middle
-            (
-                self.table_center_x - self.table_width * 0.25,
-                self.table_center_y - self.table_height * 0.55,
-            ),  # Top left
-            (
-                self.table_center_x,
-                self.table_center_y - self.table_height * 0.55,
-            ),  # Top middle
-            (
-                self.table_center_x + self.table_width * 0.25,
-                self.table_center_y - self.table_height * 0.55,
-            ),  # Top right
-            (
-                self.table_center_x + self.table_width * 0.50,
-                self.table_center_y - self.table_height * 0.3,
-            ),  # Right top
-            (
-                self.table_center_x + self.table_width * 0.50,
-                self.table_center_y + self.table_height * 0.30,
-            ),  # Right bottom
-            (
-                self.table_center_x + self.table_width * 0.25,
-                self.table_center_y + self.table_height * 0.7,
-            ),  # Bottom right
-        ]
+    def _init_seat_positions(self, num_players=8):
+        """Initialize seat positions around the table.
+
+        Args:
+            num_players: Number of players at the table (supports 6, 8, 9, or 10 players)
+        """
+        # Ensure num_players is valid, default to 8 if not
+        if num_players not in [2, 3, 4, 5, 6, 7, 8, 9]:
+            print(
+                f"Warning: Unsupported player count ({num_players}), defaulting to 8 players"
+            )
+            num_players = 8
+
+        # Common positions used across different table sizes
+        bottom_middle = (
+            self.table_center_x,
+            self.table_center_y + self.table_height * 0.7,
+        )
+        bottom_left = (
+            self.table_center_x - self.table_width * 0.25,
+            self.table_center_y + self.table_height * 0.7,
+        )
+        bottom_right = (
+            self.table_center_x + self.table_width * 0.25,
+            self.table_center_y + self.table_height * 0.7,
+        )
+        left_middle = (
+            self.table_center_x - self.table_width * 0.5,
+            self.table_center_y,
+        )
+        right_middle = (
+            self.table_center_x + self.table_width * 0.5,
+            self.table_center_y,
+        )
+        top_left = (
+            self.table_center_x - self.table_width * 0.25,
+            self.table_center_y - self.table_height * 0.55,
+        )
+        top_middle = (
+            self.table_center_x,
+            self.table_center_y - self.table_height * 0.55,
+        )
+        top_right = (
+            self.table_center_x + self.table_width * 0.25,
+            self.table_center_y - self.table_height * 0.55,
+        )
+        right_top = (
+            self.table_center_x + self.table_width * 0.50,
+            self.table_center_y - self.table_height * 0.3,
+        )
+        right_bottom = (
+            self.table_center_x + self.table_width * 0.50,
+            self.table_center_y + self.table_height * 0.30,
+        )
+
+        if num_players == 2:
+            self.seat_positions = [
+                bottom_middle,
+                top_middle,
+            ]
+        elif num_players == 3:
+            self.seat_positions = [
+                bottom_middle,
+                top_left,
+                top_right,
+            ]
+        elif num_players == 4:
+            self.seat_positions = [
+                bottom_middle,
+                left_middle,
+                top_left,
+                top_right,
+            ]
+        elif num_players == 5:
+            self.seat_positions = [
+                bottom_middle,
+                left_middle,
+                top_left,
+                top_right,
+                right_middle,
+            ]
+        elif num_players == 6:
+            self.seat_positions = [
+                bottom_middle,  # Hero
+                bottom_left,  # Bottom left
+                left_middle,  # Left middle
+                top_middle,  # Top middle
+                right_middle,  # Right middle
+                bottom_right,  # Bottom right
+            ]
+        elif num_players == 7:
+            self.seat_positions = [
+                bottom_middle,  # Hero
+                bottom_left,  # Bottom left
+                left_middle,  # Left middle
+                top_middle,  # Top middle
+                right_middle,  # Right middle
+                bottom_right,  # Bottom right
+            ]
+        elif num_players == 8:
+            self.seat_positions = [
+                bottom_middle,  # Hero
+                bottom_left,  # Bottom left
+                left_middle,  # Left middle
+                top_left,  # Top left
+                top_middle,  # Top middle
+                top_right,  # Top right
+                right_middle,  # Right middle
+                bottom_right,  # Bottom right
+            ]
+        elif num_players == 9:
+            self.seat_positions = [
+                bottom_middle,  # Hero
+                bottom_left,  # Bottom left
+                left_middle,  # Left middle
+                top_left,  # Top left
+                top_middle,  # Top middle
+                top_right,  # Top right
+                right_top,  # Right top
+                right_bottom,  # Right bottom
+                bottom_right,  # Bottom right
+            ]
 
     def load_fonts(self):
         """Load fonts with appropriate scaling."""
