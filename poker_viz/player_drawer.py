@@ -1,0 +1,493 @@
+"""
+Module for drawing players and player-related elements.
+"""
+
+from PIL import Image, ImageDraw, ImageFilter
+
+
+class PlayerDrawer:
+    """Draws players, dealer buttons, and player information."""
+
+    def __init__(self, config, game_data, img, draw):
+        """
+        Initialize the player drawer.
+
+        Args:
+            config: Configuration settings
+            game_data: Processed game data
+            img: PIL Image object
+            draw: PIL ImageDraw object
+        """
+        self.config = config
+        self.game_data = game_data
+        self.img = img
+        self.draw = draw
+
+    def set_fonts(self, title_font, player_font, card_font):
+        """Set the fonts for drawing text."""
+        self.title_font = title_font
+        self.player_font = player_font
+        self.card_font = card_font
+
+    def draw_players(self):
+        """Draw all players around the table (DEPRECATED - use draw_player_circles and draw_player_rectangles instead)."""
+        # Get position mapping
+        position_to_seat = self.game_data.get_position_mapping()
+
+        # Draw each player
+        for player in self.game_data.players:
+            position = player.get("position")
+            is_hero = player.get("is_hero", False)
+
+            # Determine seat index based on position
+            if is_hero:
+                seat_index = 0  # Hero always at bottom middle
+            elif position in position_to_seat:
+                seat_index = position_to_seat[position]
+            else:
+                # Fallback for unknown positions
+                seat_index = 8  # Default to bottom left
+
+            # Get the position coordinates
+            x, y = self.config.seat_positions[seat_index]
+
+            # Determine player color
+            is_active = (
+                player.get("is_active", False)
+                or player.get("position") == self.game_data.active_position
+            )
+            is_folded = player.get("is_folded", False)
+
+            if is_folded:
+                player_color = self.config.folded_player_color
+            elif is_hero:
+                player_color = self.config.hero_player_color
+            elif is_active:
+                player_color = self.config.active_player_color
+            else:
+                player_color = self.config.player_color
+
+            # Draw player background circle and foreground rectangle
+            self._draw_player_elements(x, y, player_color, player)
+
+            # Draw dealer button if this player is the dealer
+            if player.get("is_dealer", False):
+                self._draw_dealer_button(x, y)
+
+        return self.img, self.draw
+
+    def draw_player_circles(self):
+        """Draw all player background circles around the table."""
+        # Get position mapping
+        position_to_seat = self.game_data.get_position_mapping()
+
+        # Store player info for later use in draw_player_rectangles
+        self.player_positions = []
+
+        # Draw each player's background circle
+        for player in self.game_data.players:
+            position = player.get("position")
+            is_hero = player.get("is_hero", False)
+
+            # Determine seat index based on position
+            if is_hero:
+                seat_index = 0  # Hero always at bottom middle
+            elif position in position_to_seat:
+                seat_index = position_to_seat[position]
+            else:
+                # Fallback for unknown positions
+                seat_index = 8  # Default to bottom left
+
+            # Get the position coordinates
+            x, y = self.config.seat_positions[seat_index]
+
+            # Determine player color
+            is_active = (
+                player.get("is_active", False)
+                or player.get("position") == self.game_data.active_position
+            )
+            is_folded = player.get("is_folded", False)
+
+            if is_folded:
+                player_color = self.config.folded_player_color
+            elif is_hero:
+                player_color = self.config.hero_player_color
+            elif is_active:
+                player_color = self.config.active_player_color
+            else:
+                player_color = self.config.player_color
+
+            # Store player info for later use in draw_player_rectangles
+            self.player_positions.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "color": player_color,
+                    "player": player,
+                    "is_dealer": player.get("is_dealer", False),
+                }
+            )
+
+            # Draw just the background circle
+            self._draw_background_circle(
+                x,
+                y - 0.8 * self.config.player_radius,
+                self.config.player_radius,
+                player_color,
+            )
+
+        return self.img, self.draw
+
+    def draw_player_rectangles(self):
+        """Draw all player info rectangles on top of the background circles."""
+        # Draw each player's rectangle using stored positions
+        if not hasattr(self, "player_positions"):
+            # If draw_player_circles wasn't called first, get the positions now
+            return self.draw_players()
+
+        for pos_info in self.player_positions:
+            x = pos_info["x"]
+            y = pos_info["y"]
+            player_color = pos_info["color"]
+            player = pos_info["player"]
+
+            # Calculate rectangle dimensions
+            player_radius = self.config.player_radius
+            rect_width = player_radius * 1.8
+            rect_height = player_radius * 1.2
+
+            # Draw the rectangle with player info
+            self._draw_player_rectangle(
+                x, y, rect_width, rect_height, player_color, player
+            )  # Draw dealer button if this player is the dealer
+            if pos_info["is_dealer"]:
+                self._draw_dealer_button(x, y)
+
+        return self.img, self.draw
+
+    def _draw_player_elements(self, x, y, player_color, player):
+        """Draw a player with background circle and foreground rectangle."""
+        scale_factor = self.config.scale_factor
+        player_radius = self.config.player_radius
+
+        # Calculate rectangle dimensions
+        rect_width = player_radius * 1.8
+        rect_height = player_radius * 1.2
+
+        # Calculate circle diameter based on the larger side of the rectangle
+        circle_diameter = (
+            max(rect_width, rect_height) * 1.1
+        )  # Make circle slightly larger
+        circle_radius = circle_diameter / 2
+
+        # Adjust circle position to be 20% hidden behind the rectangle
+        # The circle center is slightly higher than the rectangle center
+        circle_y = (
+            y - rect_height * 0.4
+        )  # Increased offset to position circle more above the rectangle
+
+        # Step 1: Draw the background circle with anti-aliasing
+        self._draw_background_circle(x, circle_y, circle_radius, player_color)
+
+        # Step 2: Here is where player cards would be drawn (between circle and rectangle)
+        # Note: This is done in a separate method (typically called from card_drawer.py)
+
+        # Step 3: Draw the foreground rounded rectangle with player info
+        self._draw_player_rectangle(x, y, rect_width, rect_height, player_color, player)
+
+    def _draw_background_circle(self, x, y, radius, player_color):
+        """Draw a background circle with anti-aliasing."""
+        scale_factor = self.config.scale_factor
+
+        # Create a circular mask for the player
+        circle_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        circle_mask_draw = ImageDraw.Draw(circle_mask)
+
+        # Draw the circle on the mask
+        circle_mask_draw.ellipse(
+            [
+                x - radius,
+                y - radius,
+                x + radius,
+                y + radius,
+            ],
+            fill=255,
+        )
+
+        # Apply slight blur for smoother edges
+        circle_mask = circle_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.5)
+        )
+
+        # Create a player circle overlay
+        circle_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+
+        # Fill the player circle with the appropriate color
+        for py in range(
+            max(0, int(y - radius - scale_factor * 2)),
+            min(self.config.height, int(y + radius + scale_factor * 2)),
+        ):
+            for px in range(
+                max(0, int(x - radius - scale_factor * 2)),
+                min(self.config.width, int(x + radius + scale_factor * 2)),
+            ):
+                mask_value = circle_mask.getpixel((px, py))
+                if mask_value > 0:
+                    circle_overlay.putpixel((px, py), (*player_color[:3], mask_value))
+
+        # Overlay the player circle on the main image
+        self.img = Image.alpha_composite(self.img, circle_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+
+        # Draw border with anti-aliasing
+        border_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        border_mask_draw = ImageDraw.Draw(border_mask)
+
+        # Draw just the outline on the border mask
+        border_width = 2 * scale_factor
+        border_mask_draw.ellipse(
+            [
+                x - radius,
+                y - radius,
+                x + radius,
+                y + radius,
+            ],
+            fill=0,
+            outline=255,
+            width=border_width,
+        )
+
+        # Apply slight blur for smoother border
+        border_mask = border_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+
+        # Create a border overlay
+        border_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+
+        # Fill the border with black
+        for py in range(
+            max(0, int(y - radius - scale_factor * 3)),
+            min(self.config.height, int(y + radius + scale_factor * 3)),
+        ):
+            for px in range(
+                max(0, int(x - radius - scale_factor * 3)),
+                min(self.config.width, int(x + radius + scale_factor * 3)),
+            ):
+                mask_value = border_mask.getpixel((px, py))
+                if mask_value > 0:
+                    border_overlay.putpixel((px, py), (0, 0, 0, mask_value))
+
+        # Overlay the border on the main image
+        self.img = Image.alpha_composite(self.img, border_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+
+    def _draw_player_rectangle(self, x, y, width, height, player_color, player):
+        """Draw a rounded rectangle with player position and stack information."""
+        scale_factor = self.config.scale_factor
+        text_color = self.config.text_color
+        corner_radius = height * 0.3  # Rounded corners
+
+        # Create a mask for the rounded rectangle
+        rect_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        rect_mask_draw = ImageDraw.Draw(rect_mask)
+
+        # Draw rounded rectangle on the mask
+        left = x - width / 2
+        top = y - height / 2
+        right = x + width / 2
+        bottom = y + height / 2
+
+        # Draw the rectangle with rounded corners
+        rect_mask_draw.rounded_rectangle(
+            [left, top, right, bottom],
+            radius=corner_radius,
+            fill=255,
+        )
+
+        # Apply slight blur for smoother edges
+        rect_mask = rect_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+
+        # Create a rectangle overlay
+        rect_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+
+        # Fill the rectangle with the player color
+        for py in range(
+            max(0, int(top - scale_factor * 2)),
+            min(self.config.height, int(bottom + scale_factor * 2)),
+        ):
+            for px in range(
+                max(0, int(left - scale_factor * 2)),
+                min(self.config.width, int(right + scale_factor * 2)),
+            ):
+                mask_value = rect_mask.getpixel((px, py))
+                if mask_value > 0:
+                    # Make rectangle slightly darker than the circle
+                    color_r = max(0, int(player_color[0] * 0.9))
+                    color_g = max(0, int(player_color[1] * 0.9))
+                    color_b = max(0, int(player_color[2] * 0.9))
+                    rect_overlay.putpixel(
+                        (px, py), (color_r, color_g, color_b, mask_value)
+                    )
+
+        # Overlay the rectangle on the main image
+        self.img = Image.alpha_composite(self.img, rect_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+
+        # Draw rectangle border
+        border_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        border_mask_draw = ImageDraw.Draw(border_mask)
+
+        # Draw just the outline on the border mask
+        border_width = 2 * scale_factor
+        border_mask_draw.rounded_rectangle(
+            [left, top, right, bottom],
+            radius=corner_radius,
+            fill=0,
+            outline=255,
+            width=border_width,
+        )
+
+        # Apply slight blur for smoother border
+        border_mask = border_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+
+        # Create a border overlay
+        border_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )  # Fill the border with black
+        for py in range(
+            max(0, int(top - scale_factor * 3)),
+            min(self.config.height, int(bottom + scale_factor * 3)),
+        ):
+            for px in range(
+                max(0, int(left - scale_factor * 3)),
+                min(self.config.width, int(right + scale_factor * 3)),
+            ):
+                mask_value = border_mask.getpixel((px, py))
+                if mask_value > 0:
+                    border_overlay.putpixel((px, py), (0, 0, 0, mask_value))
+
+        # Overlay the border on the main image
+        self.img = Image.alpha_composite(self.img, border_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+
+        # Draw player information inside the rectangle
+        self._draw_player_info(x, y, player, height)
+
+    def _draw_player_info(self, x, y, player, rect_height):
+        """Draw player position and stack information inside the rectangle."""
+        scale_factor = self.config.scale_factor
+        text_color = self.config.text_color
+
+        # Draw player position
+        position_text = player.get("position", "")
+        pos_width = self.draw.textlength(position_text, font=self.player_font)
+
+        # Position the text at the top part of the rectangle
+        pos_y = y - rect_height * 0.25
+        self.draw.text(
+            (
+                x - pos_width / 2,
+                pos_y - self.player_font.getbbox(position_text)[3] / 2,
+            ),
+            position_text,
+            fill=text_color,
+            font=self.player_font,
+        )
+
+        # Draw player stack
+        stack = float(player.get("current_stack", 0))
+        stack_text = f"{stack:.1f} BB"
+        stack_width = self.draw.textlength(stack_text, font=self.player_font)
+
+        # Position the stack text at the bottom part of the rectangle
+        stack_y = y + rect_height * 0.25
+        self.draw.text(
+            (
+                x - stack_width / 2,
+                stack_y - self.player_font.getbbox(stack_text)[3] / 2,
+            ),
+            stack_text,
+            fill=text_color,
+            font=self.player_font,
+        )
+
+    def _draw_dealer_button(self, x, y):
+        """Draw the dealer button next to a player."""
+        dealer_radius = 12 * self.config.scale_factor
+        player_radius = self.config.player_radius
+        scale_factor = self.config.scale_factor
+        dealer_button_color = self.config.dealer_button_color
+
+        button_x = x + player_radius * 0.7
+        button_y = y - player_radius * 0.7
+
+        # Create a mask for the dealer button
+        button_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        button_mask_draw = ImageDraw.Draw(button_mask)
+
+        # Draw the button on the mask
+        button_mask_draw.ellipse(
+            [
+                button_x - dealer_radius,
+                button_y - dealer_radius,
+                button_x + dealer_radius,
+                button_y + dealer_radius,
+            ],
+            fill=255,
+        )
+
+        # Apply slight blur for smoother edges
+        button_mask = button_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+
+        # Create a button overlay with the dealer button color
+        button_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+
+        # Fill the button with the dealer button color
+        for py in range(
+            max(0, int(button_y - dealer_radius - scale_factor * 2)),
+            min(self.config.height, int(button_y + dealer_radius + scale_factor * 2)),
+        ):
+            for px in range(
+                max(0, int(button_x - dealer_radius - scale_factor * 2)),
+                min(
+                    self.config.width, int(button_x + dealer_radius + scale_factor * 2)
+                ),
+            ):
+                mask_value = button_mask.getpixel((px, py))
+                if mask_value > 0:
+                    button_overlay.putpixel(
+                        (px, py), (*dealer_button_color[:3], mask_value)
+                    )
+
+        # Overlay the button on the main image
+        self.img = Image.alpha_composite(self.img, button_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+
+        # Draw "D" in the center of the button
+        d_text = "D"
+        d_width = self.draw.textlength(d_text, font=self.player_font)
+        d_height = self.player_font.getbbox(d_text)[3]
+        self.draw.text(
+            (
+                button_x - d_width / 2,
+                button_y - d_height / 2,
+            ),
+            d_text,
+            fill=(0, 0, 0, 255),
+            font=self.player_font,
+        )  # NOTE: draw_player_chips method has been moved to chip_drawer.py
