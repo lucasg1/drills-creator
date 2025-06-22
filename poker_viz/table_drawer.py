@@ -100,9 +100,10 @@ class TableDrawer:
             table_color[3],
         )
 
-        # Colors for the wooden border
+        # Color for the wooden border
         wood_color = (133, 94, 66, 255)
-        wood_darker = tuple(max(0, c - 40) for c in wood_color[:3]) + (wood_color[3],)
+        wood_light = tuple(min(255, c + 40) for c in wood_color[:3]) + (wood_color[3],)
+        wood_dark = tuple(max(0, c - 40) for c in wood_color[:3]) + (wood_color[3],)
 
         # ------------------------------------------------------------------
         # Background shadow of the table
@@ -131,11 +132,11 @@ class TableDrawer:
         )
         overlay_draw = ImageDraw.Draw(table_overlay, "RGBA")
 
-        # Draw wooden border with simple 3D look
+        # Draw wooden border
         overlay_draw.rounded_rectangle(
             outer_bottom_bbox,
             radius=radius + border_thickness,
-            fill=wood_darker,
+            fill=wood_color,
         )
         overlay_draw.rounded_rectangle(
             bottom_bbox, radius=radius, fill=darker_color
@@ -146,15 +147,29 @@ class TableDrawer:
         overlay_draw.rounded_rectangle(top_bbox, radius=radius, fill=table_color)
 
         line_width = 3 * scale_factor
-        wood_light = tuple(min(255, c + 40) for c in wood_color[:3]) + (
-            wood_color[3],
+
+        # Create subtle highlight and shadow to give the border a rounded look
+        light_shadow = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
-        overlay_draw.rounded_rectangle(
+        shadow_draw = ImageDraw.Draw(light_shadow, "RGBA")
+        shadow_draw.rounded_rectangle(
             outer_top_bbox,
             radius=radius + border_thickness,
             outline=wood_light,
-            width=max(1, border_thickness // 2),
+            width=border_thickness,
         )
+        shadow_draw.rounded_rectangle(
+            outer_bottom_bbox,
+            radius=radius + border_thickness,
+            outline=wood_dark,
+            width=border_thickness,
+        )
+        light_shadow = light_shadow.filter(
+            ImageFilter.GaussianBlur(radius=border_thickness // 2)
+        )
+        table_overlay = Image.alpha_composite(table_overlay, light_shadow)
+
         overlay_draw.rounded_rectangle(
             outer_top_bbox,
             radius=radius + border_thickness,
