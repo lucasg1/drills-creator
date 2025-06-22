@@ -70,13 +70,36 @@ class TableDrawer:
         table_right = table_left + table_width
         table_bottom = table_top + table_height
 
+        # Thickness of the wooden border around the table
+        border_thickness = int(min(table_width, table_height) * 0.05)
+
         # Thickness of the table for the 3D look
         depth = max(6, table_height // 12)
 
         top_bbox = [table_left, table_top, table_right, table_bottom]
         bottom_bbox = [table_left, table_top + depth, table_right, table_bottom + depth]
 
-        darker_color = tuple(max(0, c - 40) for c in table_color[:3]) + (table_color[3],)
+        # Bounding boxes including the wooden border
+        outer_top_bbox = [
+            table_left - border_thickness,
+            table_top - border_thickness,
+            table_right + border_thickness,
+            table_bottom + border_thickness,
+        ]
+        outer_bottom_bbox = [
+            table_left - border_thickness,
+            table_top + depth - border_thickness,
+            table_right + border_thickness,
+            table_bottom + depth + border_thickness,
+        ]
+
+        darker_color = tuple(max(0, c - 40) for c in table_color[:3]) + (
+            table_color[3],
+        )
+
+        # Colors for the wooden border
+        wood_color = (133, 94, 66, 255)
+        wood_darker = tuple(max(0, c - 40) for c in wood_color[:3]) + (wood_color[3],)
 
         # ------------------------------------------------------------------
         # Background shadow of the table
@@ -85,10 +108,10 @@ class TableDrawer:
         shadow_draw = ImageDraw.Draw(shadow_overlay, "RGBA")
         shadow_offset = depth * 2
         shadow_bbox = [
-            table_left + shadow_offset,
-            table_top + depth + shadow_offset,
-            table_right + shadow_offset,
-            table_bottom + depth + shadow_offset,
+            table_left - border_thickness + shadow_offset,
+            table_top + depth - border_thickness + shadow_offset,
+            table_right + border_thickness + shadow_offset,
+            table_bottom + depth + border_thickness + shadow_offset,
         ]
         shadow_draw.ellipse(shadow_bbox, fill=(0, 0, 0, 120))
         shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=depth))
@@ -98,12 +121,19 @@ class TableDrawer:
         # ------------------------------------------------------------------
         # Table surface
         # ------------------------------------------------------------------
-        table_overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        table_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
         overlay_draw = ImageDraw.Draw(table_overlay, "RGBA")
+
+        # Draw wooden border with simple 3D look
+        overlay_draw.ellipse(outer_bottom_bbox, fill=wood_darker)
         overlay_draw.ellipse(bottom_bbox, fill=darker_color)
+        overlay_draw.ellipse(outer_top_bbox, fill=wood_color)
         overlay_draw.ellipse(top_bbox, fill=table_color)
 
         line_width = 3 * scale_factor
+        overlay_draw.ellipse(outer_top_bbox, outline=(0, 0, 0, 255), width=line_width)
         overlay_draw.ellipse(top_bbox, outline=(0, 0, 0, 255), width=line_width)
 
         self.img = Image.alpha_composite(self.img, table_overlay)
