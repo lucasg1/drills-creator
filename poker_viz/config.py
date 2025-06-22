@@ -177,7 +177,7 @@ class PokerTableConfig:
         """Load fonts with appropriate scaling."""
         try:
             title_font = ImageFont.truetype("arial.ttf", 32 * self.scale_factor)
-            player_font = ImageFont.truetype("arial.ttf", 16 * self.scale_factor)
+            player_font = ImageFont.truetype("arial.ttf", 20 * self.scale_factor)
             card_font = ImageFont.truetype("arial.ttf", 24 * self.scale_factor)
         except IOError:
             # Fallback to default font

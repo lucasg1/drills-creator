@@ -492,7 +492,7 @@ class PlayerDrawer:
             d_text,
             fill=(0, 0, 0, 255),
             font=self.player_font,
-        )  # NOTE: draw_player_chips method has been moved to chip_drawer.py
+        )
 
     def _get_safe_seat_position(self, seat_index):
         """Safely get the seat position even if the index is out of range.
