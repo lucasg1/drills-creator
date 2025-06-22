@@ -142,7 +142,6 @@ class ChipDrawer:
         self.img = Image.alpha_composite(self.img, highlight_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-
     def draw_player_chips(self):
         """Draw chips on the table representing each player's bet with realistic 3D effects."""
         position_to_seat = self.game_data.get_position_mapping()
@@ -203,15 +202,15 @@ class ChipDrawer:
                 2: {},
                 3: {},
                 4: {},
-                5: {4: 0.6},
-                6: {4: 0.6, 5: 0.6},
-                7: {4: 0.6, 5: 0.6},
-                8: {6: 0.6, 7: 0.6},
-                9: {6: 0.6, 7: 0.6, 8: 0.6},
+                5: {},
+                6: {},
+                7: {},
+                8: {1: 0.5, 2: 0.3, 3: 0.5, 5: 0.5, 6: 0.3, 7: 0.5},
+                9: {},
             }
 
             distance_factors = distance_maps.get(self.config.num_players, {})
-            distance = distance_factors.get(seat_index, 0.7)
+            distance = distance_factors.get(seat_index, 0.5)
 
             chip_x = x + dx * (length * distance)
             chip_y = y + dy * (length * distance)
