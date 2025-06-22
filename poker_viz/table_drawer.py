@@ -2,7 +2,7 @@
 Module for drawing the poker table and its components.
 """
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 
 class TableDrawer:
@@ -34,6 +34,35 @@ class TableDrawer:
         table_color = self.config.table_color
         text_color = self.config.text_color
 
+        # ------------------------------------------------------------------
+        # Background
+        # ------------------------------------------------------------------
+        base_color = (15, 40, 80, 255)
+        highlight_color = (40, 80, 150, 255)
+        bg = Image.new("RGBA", (self.config.width, self.config.height), base_color)
+
+        highlight = Image.new("RGBA", (self.config.width, self.config.height), highlight_color)
+        mask = Image.new("L", (self.config.width, self.config.height), 0)
+        mask_draw = ImageDraw.Draw(mask)
+
+        # Use a large ellipse mask for a soft radial effect
+        extra = max(table_width, table_height)
+        mask_draw.ellipse(
+            [
+                table_center_x - extra,
+                table_center_y - extra,
+                table_center_x + extra,
+                table_center_y + extra,
+            ],
+            fill=255,
+        )
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=extra // 2))
+        bg = Image.composite(highlight, bg, mask)
+
+        self.img = bg
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+
+        # ------------------------------------------------------------------
         # Draw the table using two ellipses to simulate perspective
         table_left = table_center_x - table_width // 2
         table_top = table_center_y - table_height // 2
@@ -48,6 +77,26 @@ class TableDrawer:
 
         darker_color = tuple(max(0, c - 40) for c in table_color[:3]) + (table_color[3],)
 
+        # ------------------------------------------------------------------
+        # Background shadow of the table
+        # ------------------------------------------------------------------
+        shadow_overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow_overlay, "RGBA")
+        shadow_offset = depth * 2
+        shadow_bbox = [
+            table_left + shadow_offset,
+            table_top + depth + shadow_offset,
+            table_right + shadow_offset,
+            table_bottom + depth + shadow_offset,
+        ]
+        shadow_draw.ellipse(shadow_bbox, fill=(0, 0, 0, 120))
+        shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=depth))
+        self.img = Image.alpha_composite(self.img, shadow_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+
+        # ------------------------------------------------------------------
+        # Table surface
+        # ------------------------------------------------------------------
         table_overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
         overlay_draw = ImageDraw.Draw(table_overlay, "RGBA")
         overlay_draw.ellipse(bottom_bbox, fill=darker_color)
