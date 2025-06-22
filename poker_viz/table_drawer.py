@@ -96,14 +96,16 @@ class TableDrawer:
             table_bottom + depth + border_thickness,
         ]
 
-        darker_color = tuple(max(0, c - 40) for c in table_color[:3]) + (
+        darker_color = tuple(max(0, c - 25) for c in table_color[:3]) + (
             table_color[3],
         )
 
         # Color for the wooden border
         wood_color = (133, 94, 66, 255)
-        wood_light = tuple(min(255, c + 40) for c in wood_color[:3]) + (wood_color[3],)
-        wood_dark = tuple(max(0, c - 40) for c in wood_color[:3]) + (wood_color[3],)
+
+        # Slightly lighter and darker shades used only for lighting effects
+        wood_light = tuple(min(255, c + 20) for c in wood_color[:3]) + (120,)
+        wood_dark = tuple(max(0, c - 20) for c in wood_color[:3]) + (120,)
 
         # ------------------------------------------------------------------
         # Background shadow of the table
@@ -146,27 +148,28 @@ class TableDrawer:
         )
         overlay_draw.rounded_rectangle(top_bbox, radius=radius, fill=table_color)
 
-        line_width = 3 * scale_factor
+        line_width = 2 * scale_factor
 
         # Create subtle highlight and shadow to give the border a rounded look
         light_shadow = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
         shadow_draw = ImageDraw.Draw(light_shadow, "RGBA")
+        highlight_width = max(1, border_thickness // 2)
         shadow_draw.rounded_rectangle(
             outer_top_bbox,
             radius=radius + border_thickness,
             outline=wood_light,
-            width=border_thickness,
+            width=highlight_width,
         )
         shadow_draw.rounded_rectangle(
             outer_bottom_bbox,
             radius=radius + border_thickness,
             outline=wood_dark,
-            width=border_thickness,
+            width=highlight_width,
         )
         light_shadow = light_shadow.filter(
-            ImageFilter.GaussianBlur(radius=border_thickness // 2)
+            ImageFilter.GaussianBlur(radius=max(1, highlight_width // 2))
         )
         table_overlay = Image.alpha_composite(table_overlay, light_shadow)
 
