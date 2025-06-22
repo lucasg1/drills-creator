@@ -197,12 +197,20 @@ class ChipDrawer:
                 dx /= length
                 dy /= length
 
-            # Custom distance from each player to center to fine tune chip placement
-            distance_factors = {
-                6: 0.6,  # Right side players
-                7: 0.6,
-                8: 0.6,
+            # Custom distance factors depend on the number of seats so
+            # they remain consistent when table size changes
+            distance_maps = {
+                2: {},
+                3: {},
+                4: {},
+                5: {4: 0.6},
+                6: {4: 0.6, 5: 0.6},
+                7: {4: 0.6, 5: 0.6},
+                8: {6: 0.6, 7: 0.6},
+                9: {6: 0.6, 7: 0.6, 8: 0.6},
             }
+
+            distance_factors = distance_maps.get(self.config.num_players, {})
             distance = distance_factors.get(seat_index, 0.7)
 
             chip_x = x + dx * (length * distance)
