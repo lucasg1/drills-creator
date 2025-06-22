@@ -37,8 +37,9 @@ class TableDrawer:
         # ------------------------------------------------------------------
         # Background
         # ------------------------------------------------------------------
-        base_color = (15, 40, 80, 255)
-        highlight_color = (40, 80, 150, 255)
+        # Use a dark background with a subtle radial highlight
+        base_color = (0, 0, 0, 255)
+        highlight_color = (40, 40, 40, 255)
         bg = Image.new("RGBA", (self.config.width, self.config.height), base_color)
 
         highlight = Image.new("RGBA", (self.config.width, self.config.height), highlight_color)
