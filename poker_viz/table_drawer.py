@@ -134,7 +134,7 @@ class TableDrawer:
         )
         overlay_draw = ImageDraw.Draw(table_overlay, "RGBA")
 
-        # Draw wooden border
+        # Draw the bottom portion for the 3D effect
         overlay_draw.rounded_rectangle(
             outer_bottom_bbox,
             radius=radius + border_thickness,
@@ -143,6 +143,8 @@ class TableDrawer:
         overlay_draw.rounded_rectangle(
             bottom_bbox, radius=radius, fill=darker_color
         )
+
+        # Draw the flat wooden border on top
         overlay_draw.rounded_rectangle(
             outer_top_bbox, radius=radius + border_thickness, fill=wood_color
         )
@@ -150,28 +152,42 @@ class TableDrawer:
 
         line_width = 2 * scale_factor
 
-        # Create subtle highlight and shadow to give the border a rounded look
-        light_shadow = Image.new(
+        # Create highlight on the outer edge for a subtle rounded effect
+        highlight_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
-        shadow_draw = ImageDraw.Draw(light_shadow, "RGBA")
+        highlight_draw = ImageDraw.Draw(highlight_overlay, "RGBA")
         highlight_width = max(1, border_thickness // 2)
-        shadow_draw.rounded_rectangle(
+        highlight_draw.rounded_rectangle(
             outer_top_bbox,
             radius=radius + border_thickness,
             outline=wood_light,
             width=highlight_width,
         )
-        shadow_draw.rounded_rectangle(
-            outer_bottom_bbox,
-            radius=radius + border_thickness,
-            outline=wood_dark,
-            width=highlight_width,
-        )
-        light_shadow = light_shadow.filter(
+        highlight_overlay = highlight_overlay.filter(
             ImageFilter.GaussianBlur(radius=max(1, highlight_width // 2))
         )
-        table_overlay = Image.alpha_composite(table_overlay, light_shadow)
+        table_overlay = Image.alpha_composite(table_overlay, highlight_overlay)
+
+        # Dark shadow along the inner edge near the top side
+        shadow_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        mask_draw = ImageDraw.Draw(shadow_mask)
+        inner_width = max(1, border_thickness // 2)
+        mask_draw.rounded_rectangle(
+            top_bbox,
+            radius=radius,
+            outline=255,
+            width=inner_width,
+        )
+        mask_draw.rectangle(
+            [0, table_center_y, self.config.width, self.config.height], fill=0
+        )
+        shadow_mask = shadow_mask.filter(
+            ImageFilter.GaussianBlur(radius=max(1, inner_width // 2))
+        )
+        inner_shadow = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 80))
+        inner_shadow.putalpha(shadow_mask)
+        table_overlay = Image.alpha_composite(table_overlay, inner_shadow)
 
         overlay_draw.rounded_rectangle(
             outer_top_bbox,
