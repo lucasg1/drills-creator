@@ -29,14 +29,133 @@ class ChipDrawer:
         self.player_font = player_font
         self.card_font = card_font
 
+    def _draw_chip(self, chip_x, chip_y, chip_color):
+        """Draw a single chip at the specified position with a 3D look."""
+        scale_factor = self.config.scale_factor
+
+        chip_border_color = tuple(max(0, c - 40) for c in chip_color)
+        highlight_color = tuple(min(255, c + 40) for c in chip_color)
+
+        chip_radius = 15 * scale_factor
+        chip_height_ratio = 0.4
+
+        chip_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        chip_mask_draw = ImageDraw.Draw(chip_mask)
+        chip_mask_draw.ellipse(
+            [
+                chip_x - chip_radius,
+                chip_y - chip_radius * chip_height_ratio,
+                chip_x + chip_radius,
+                chip_y + chip_radius * chip_height_ratio,
+            ],
+            fill=255,
+        )
+        chip_mask = chip_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+
+        chip_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        for py in range(
+            max(0, int(chip_y - chip_radius - scale_factor * 2)),
+            min(self.config.height, int(chip_y + chip_radius + scale_factor * 2)),
+        ):
+            for px in range(
+                max(0, int(chip_x - chip_radius - scale_factor * 2)),
+                min(self.config.width, int(chip_x + chip_radius + scale_factor * 2)),
+            ):
+                mask_value = chip_mask.getpixel((px, py))
+                if mask_value > 0:
+                    chip_overlay.putpixel((px, py), (*chip_color[:3], mask_value))
+
+        self.img = Image.alpha_composite(self.img, chip_overlay)
+
+        border_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        border_mask_draw = ImageDraw.Draw(border_mask)
+        border_width = 2 * scale_factor
+        border_mask_draw.ellipse(
+            [
+                chip_x - chip_radius,
+                chip_y - chip_radius * chip_height_ratio,
+                chip_x + chip_radius,
+                chip_y + chip_radius * chip_height_ratio,
+            ],
+            fill=0,
+            outline=255,
+            width=border_width,
+        )
+        border_mask = border_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+        border_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        for py in range(
+            max(0, int(chip_y - chip_radius - scale_factor * 3)),
+            min(self.config.height, int(chip_y + chip_radius + scale_factor * 3)),
+        ):
+            for px in range(
+                max(0, int(chip_x - chip_radius - scale_factor * 3)),
+                min(self.config.width, int(chip_x + chip_radius + scale_factor * 3)),
+            ):
+                mask_value = border_mask.getpixel((px, py))
+                if mask_value > 0:
+                    border_overlay.putpixel((px, py), (*chip_border_color[:3], mask_value))
+
+        self.img = Image.alpha_composite(self.img, border_overlay)
+
+        highlight_mask = Image.new("L", (self.config.width, self.config.height), 0)
+        highlight_mask_draw = ImageDraw.Draw(highlight_mask)
+        highlight_mask_draw.arc(
+            [
+                chip_x - chip_radius * 0.7,
+                chip_y - chip_radius * chip_height_ratio * 0.7,
+                chip_x + chip_radius * 0.7,
+                chip_y + chip_radius * chip_height_ratio * 0.7,
+            ],
+            start=20,
+            end=160,
+            fill=255,
+            width=2 * scale_factor,
+        )
+        highlight_mask = highlight_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.2)
+        )
+        highlight_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        for py in range(
+            max(0, int(chip_y - chip_radius - scale_factor * 2)),
+            min(self.config.height, int(chip_y + chip_radius + scale_factor * 2)),
+        ):
+            for px in range(
+                max(0, int(chip_x - chip_radius - scale_factor * 2)),
+                min(self.config.width, int(chip_x + chip_radius + scale_factor * 2)),
+            ):
+                mask_value = highlight_mask.getpixel((px, py))
+                if mask_value > 0:
+                    highlight_overlay.putpixel(
+                        (px, py), (*highlight_color[:3], mask_value)
+                    )
+
+        self.img = Image.alpha_composite(self.img, highlight_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+
     def draw_player_chips(self):
         """Draw chips on the table representing each player's bet with realistic 3D effects."""
         position_to_seat = self.game_data.get_position_mapping()
 
-        # Chip colors
-        chip_color = (220, 180, 0)  # Gold color for chips
-        chip_border_color = (180, 140, 0)  # Darker gold for border
-        highlight_color = (250, 240, 180)  # Light gold for highlights
+        # Chip colors mapped by denomination
+        chip_colors = {
+            0.1: (200, 200, 200),  # Grey
+            0.5: (150, 75, 0),  # Brown
+            1: (220, 40, 40),  # Red
+            5: (30, 30, 180),  # Blue
+            10: (0, 130, 0),  # Green
+            50: (130, 0, 130),  # Purple
+            100: (20, 20, 20),  # Black
+        }
         text_color = self.config.text_color
         player_radius = self.config.player_radius
         scale_factor = self.config.scale_factor
@@ -77,165 +196,48 @@ class ChipDrawer:
                 dx /= length
                 dy /= length
 
-            # Position chips 75% of the way from player to center
-            chip_x = x + dx * (player_radius + 75 * scale_factor)
-            chip_y = y + dy * (player_radius + 75 * scale_factor)
+            # Custom distance factors depend on the number of seats so
+            # they remain consistent when table size changes
+            distance_maps = {
+                2: {},
+                3: {},
+                4: {},
+                5: {},
+                6: {},
+                7: {},
+                8: {1: 0.5, 2: 0.3, 3: 0.5, 5: 0.5, 6: 0.3, 7: 0.5},
+                9: {},
+            }
 
-            # Draw chip with 3D effect (ellipse with slight tilt)
-            chip_radius = 15 * scale_factor
-            chip_height_ratio = 0.4  # Height ratio for tilt effect (makes it appear 3D)
+            distance_factors = distance_maps.get(self.config.num_players, {})
+            distance = distance_factors.get(seat_index, 0.5)
 
-            # Create a mask for the chip
-            chip_mask = Image.new("L", (self.config.width, self.config.height), 0)
-            chip_mask_draw = ImageDraw.Draw(chip_mask)
+            chip_x = x + dx * (length * distance)
+            chip_y = y + dy * (length * distance)
 
-            # Draw the chip shape on the mask (elliptical for 3D effect)
-            chip_mask_draw.ellipse(
-                [
-                    chip_x - chip_radius,
-                    chip_y - chip_radius * chip_height_ratio,
-                    chip_x + chip_radius,
-                    chip_y + chip_radius * chip_height_ratio,
-                ],
-                fill=255,
+            # Break the chip value into known denominations
+            denominations = [100, 50, 10, 5, 1, 0.5, 0.1]
+            remaining = chips
+            stack = []
+            for denom in denominations:
+                count = int(remaining // denom)
+                if count:
+                    stack.extend([denom] * count)
+                    remaining -= count * denom
+                    remaining = round(remaining, 2)
+
+            stack_spacing = 8 * scale_factor
+            for idx, denom in enumerate(stack):
+                self._draw_chip(chip_x, chip_y - idx * stack_spacing, chip_colors[denom])
+
+            chip_text = (
+                f"{chips:.1f} BB" if chips < 10 else f"{chips:.0f} BB"
             )
-
-            # Apply slight blur for smoother edges
-            chip_mask = chip_mask.filter(
-                ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-            )
-
-            # Create a chip overlay with the chip color
-            chip_overlay = Image.new(
-                "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
-            )
-
-            # Fill the chip with gold color
-            for py in range(
-                max(0, int(chip_y - chip_radius - scale_factor * 2)),
-                min(self.config.height, int(chip_y + chip_radius + scale_factor * 2)),
-            ):
-                for px in range(
-                    max(0, int(chip_x - chip_radius - scale_factor * 2)),
-                    min(
-                        self.config.width, int(chip_x + chip_radius + scale_factor * 2)
-                    ),
-                ):
-                    mask_value = chip_mask.getpixel((px, py))
-                    if mask_value > 0:
-                        chip_overlay.putpixel((px, py), (*chip_color[:3], mask_value))
-
-            # Overlay the chip on the main image
-            self.img = Image.alpha_composite(self.img, chip_overlay)
-
-            # Draw border with anti-aliasing
-            border_mask = Image.new("L", (self.config.width, self.config.height), 0)
-            border_mask_draw = ImageDraw.Draw(border_mask)
-
-            # Draw just the outline on the border mask
-            border_width = 2 * scale_factor
-            border_mask_draw.ellipse(
-                [
-                    chip_x - chip_radius,
-                    chip_y - chip_radius * chip_height_ratio,
-                    chip_x + chip_radius,
-                    chip_y + chip_radius * chip_height_ratio,
-                ],
-                fill=0,
-                outline=255,
-                width=border_width,
-            )
-
-            # Apply slight blur for smoother border
-            border_mask = border_mask.filter(
-                ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-            )
-
-            # Create a border overlay
-            border_overlay = Image.new(
-                "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
-            )
-
-            # Fill the border with darker gold
-            for py in range(
-                max(0, int(chip_y - chip_radius - scale_factor * 3)),
-                min(self.config.height, int(chip_y + chip_radius + scale_factor * 3)),
-            ):
-                for px in range(
-                    max(0, int(chip_x - chip_radius - scale_factor * 3)),
-                    min(
-                        self.config.width, int(chip_x + chip_radius + scale_factor * 3)
-                    ),
-                ):
-                    mask_value = border_mask.getpixel((px, py))
-                    if mask_value > 0:
-                        border_overlay.putpixel(
-                            (px, py), (*chip_border_color[:3], mask_value)
-                        )
-
-            # Overlay the border on the main image
-            self.img = Image.alpha_composite(self.img, border_overlay)
-
-            # Add a highlight to enhance 3D effect
-            highlight_mask = Image.new("L", (self.config.width, self.config.height), 0)
-            highlight_mask_draw = ImageDraw.Draw(highlight_mask)
-
-            # Draw the highlight arc on the mask
-            highlight_mask_draw.arc(
-                [
-                    chip_x - chip_radius * 0.7,
-                    chip_y - chip_radius * chip_height_ratio * 0.7,
-                    chip_x + chip_radius * 0.7,
-                    chip_y + chip_radius * chip_height_ratio * 0.7,
-                ],
-                start=20,
-                end=160,
-                fill=255,
-                width=2 * scale_factor,
-            )
-
-            # Apply slight blur for smoother highlight
-            highlight_mask = highlight_mask.filter(
-                ImageFilter.GaussianBlur(radius=scale_factor * 0.2)
-            )
-
-            # Create a highlight overlay
-            highlight_overlay = Image.new(
-                "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
-            )
-
-            # Fill the highlight with light gold
-            for py in range(
-                max(0, int(chip_y - chip_radius - scale_factor * 2)),
-                min(self.config.height, int(chip_y + chip_radius + scale_factor * 2)),
-            ):
-                for px in range(
-                    max(0, int(chip_x - chip_radius - scale_factor * 2)),
-                    min(
-                        self.config.width, int(chip_x + chip_radius + scale_factor * 2)
-                    ),
-                ):
-                    mask_value = highlight_mask.getpixel((px, py))
-                    if mask_value > 0:
-                        highlight_overlay.putpixel(
-                            (px, py), (*highlight_color[:3], mask_value)
-                        )
-
-            # Overlay the highlight on the main image
-            self.img = Image.alpha_composite(self.img, highlight_overlay)
-            self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
-
-            # Draw the chip value text
-            chip_text = f"{chips:.1f}" if chips < 10 else f"{chips:.0f}"
-            text_width = self.draw.textlength(chip_text, font=self.player_font)
+            text_y = chip_y - (len(stack) - 1) * stack_spacing / 2 - self.player_font.getbbox(chip_text)[3] / 2
             self.draw.text(
                 (
-                    chip_x
-                    + chip_radius
-                    + 5 * scale_factor,  # Position to the right of the chip
-                    chip_y
-                    - self.player_font.getbbox(chip_text)[3]
-                    / 2,  # Vertically centered with the chip
+                    chip_x + 15 * scale_factor + 5 * scale_factor,
+                    text_y,
                 ),
                 chip_text,
                 fill=text_color,

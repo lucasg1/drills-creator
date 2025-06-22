@@ -134,43 +134,44 @@ class PokerTableConfig:
         elif num_players == 6:
             self.seat_positions = [
                 bottom_middle,  # Hero
-                bottom_left,  # Bottom left
-                left_middle,  # Left middle
-                top_middle,  # Top middle
-                right_middle,  # Right middle
-                bottom_right,  # Bottom right
+                bottom_left,
+                left_middle,
+                top_middle,
+                right_middle,
+                bottom_right,
             ]
         elif num_players == 7:
             self.seat_positions = [
                 bottom_middle,  # Hero
-                bottom_left,  # Bottom left
-                left_middle,  # Left middle
-                top_middle,  # Top middle
-                right_middle,  # Right middle
-                bottom_right,  # Bottom right
+                bottom_left,
+                left_middle,
+                top_middle,
+                top_right,
+                right_middle,
+                bottom_right,
             ]
         elif num_players == 8:
             self.seat_positions = [
                 bottom_middle,  # Hero
-                bottom_left,  # Bottom left
-                left_middle,  # Left middle
-                top_left,  # Top left
-                top_middle,  # Top middle
-                top_right,  # Top right
-                right_middle,  # Right middle
-                bottom_right,  # Bottom right
+                bottom_left,
+                left_middle,
+                top_left,
+                top_middle,
+                top_right,
+                right_middle,
+                bottom_right,
             ]
         elif num_players == 9:
             self.seat_positions = [
                 bottom_middle,  # Hero
-                bottom_left,  # Bottom left
-                left_middle,  # Left middle
-                top_left,  # Top left
-                top_middle,  # Top middle
-                top_right,  # Top right
-                right_top,  # Right top
-                right_bottom,  # Right bottom
-                bottom_right,  # Bottom right
+                bottom_left,
+                left_middle,
+                top_left,
+                top_middle,
+                top_right,
+                right_top,
+                right_bottom,
+                bottom_right,
             ]
 
     def load_fonts(self):
