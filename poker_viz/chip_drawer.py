@@ -205,12 +205,12 @@ class ChipDrawer:
                 5: {},
                 6: {},
                 7: {},
-                8: {1: 0.5, 2: 0.3, 3: 0.5, 5: 0.5, 6: 0.3, 7: 0.5},
+                8: {0: 0.6, 1: 0.4, 2: 0.2, 3: 0.3, 4: 0.3, 5: 0.5, 6: 0.3, 7: 0.5},
                 9: {},
             }
 
             distance_factors = distance_maps.get(self.config.num_players, {})
-            distance = distance_factors.get(seat_index, 0.5)
+            distance = distance_factors.get(seat_index, 0.6)
 
             chip_x = x + dx * (length * distance)
             chip_y = y + dy * (length * distance)

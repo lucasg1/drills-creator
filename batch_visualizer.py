@@ -8,6 +8,7 @@ from read_solution import read_spot_solution
 from clear_spot_solution_json import clear_spot_solution_json
 from poker_table_visualizer import PokerTableVisualizer
 import logging
+import random
 
 # Set up logging
 logging.basicConfig(
@@ -87,25 +88,31 @@ class BatchVisualizer:
             "2": "2",
         }
 
+        # Define the suits we can use
+        suits = ['h', 's', 'd', 'c']
+
         # Handle pairs (e.g., 22, AA)
         if len(hand) == 2 and hand[0] == hand[1]:
             rank = rank_map[hand[0]]
-            # Use different suits for the pair
-            result = (f"{rank}h", f"{rank}s")
+            # Use two different random suits for the pair
+            suit1, suit2 = random.sample(suits, 2)
+            result = (f"{rank}{suit1}", f"{rank}{suit2}")
 
         # Handle suited hands (e.g., AKs)
         elif len(hand) == 3 and hand[2] == "s":
             rank1 = rank_map[hand[0]]
             rank2 = rank_map[hand[1]]
-            # Both cards have same suit (spades)
-            result = (f"{rank1}s", f"{rank2}s")
+            # Pick a random suit for both cards
+            suit = random.choice(suits)
+            result = (f"{rank1}{suit}", f"{rank2}{suit}")
 
         # Handle offsuit hands (e.g., AKo, or simply AK which is implied offsuit)
         else:
             rank1 = rank_map[hand[0]]
             rank2 = rank_map[hand[1]]
-            # Use different suits (hearts and diamonds)
-            result = (f"{rank1}h", f"{rank2}d")
+            # Use two different random suits
+            suit1, suit2 = random.sample(suits, 2)
+            result = (f"{rank1}{suit1}", f"{rank2}{suit2}")
 
         # Cache the result
         self.hand_to_cards_map[hand] = result
