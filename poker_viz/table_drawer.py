@@ -71,7 +71,7 @@ class TableDrawer:
         table_bottom = table_top + table_height
 
         # Thickness of the wooden border around the table
-        border_thickness = int(min(table_width, table_height) * 0.05)
+        border_thickness = int(min(table_width, table_height) * 0.08)
 
         # Thickness of the table for the 3D look
         depth = max(6, table_height // 12)
@@ -89,11 +89,11 @@ class TableDrawer:
             table_right + border_thickness,
             table_bottom + border_thickness,
         ]
-        outer_bottom_bbox = [
+        side_bbox = [
             table_left - border_thickness,
-            table_top + depth - border_thickness,
+            table_top,
             table_right + border_thickness,
-            table_bottom + depth + border_thickness,
+            table_bottom + depth,
         ]
 
         darker_color = tuple(max(0, c - 25) for c in table_color[:3]) + (
@@ -134,9 +134,9 @@ class TableDrawer:
         )
         overlay_draw = ImageDraw.Draw(table_overlay, "RGBA")
 
-        # Draw the bottom portion for the 3D effect
+        # Draw the side of the table for the 3D effect
         overlay_draw.rounded_rectangle(
-            outer_bottom_bbox,
+            side_bbox,
             radius=radius + border_thickness,
             fill=wood_color,
         )
