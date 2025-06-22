@@ -3,6 +3,7 @@ Module for drawing the poker table and its components.
 """
 
 from PIL import Image, ImageDraw, ImageFilter
+import os
 
 
 class TableDrawer:
@@ -188,6 +189,39 @@ class TableDrawer:
         inner_shadow = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 80))
         inner_shadow.putalpha(shadow_mask)
         table_overlay = Image.alpha_composite(table_overlay, inner_shadow)
+
+        # --------------------------------------------------------------
+        # Accent line and center logo
+        # --------------------------------------------------------------
+        accent_inset = max(1, border_thickness // 3)
+        accent_bbox = [
+            top_bbox[0] + accent_inset,
+            top_bbox[1] + accent_inset,
+            top_bbox[2] - accent_inset,
+            top_bbox[3] - accent_inset,
+        ]
+        overlay_draw.rounded_rectangle(
+            accent_bbox,
+            radius=radius - accent_inset,
+            outline=(255, 255, 255, 80),
+            width=max(1, line_width // 2),
+        )
+
+        logo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "flow_logo.png",
+        )
+        if os.path.exists(logo_path):
+            logo = Image.open(logo_path).convert("RGBA")
+            max_w = accent_bbox[2] - accent_bbox[0]
+            max_h = accent_bbox[3] - accent_bbox[1]
+            logo.thumbnail((max_w, max_h), Image.LANCZOS)
+            logo = logo.rotate(-5, resample=Image.BICUBIC, expand=True)
+            alpha = logo.split()[-1].point(lambda a: int(a * 0.7))
+            logo.putalpha(alpha)
+            lx = int(table_center_x - logo.width / 2)
+            ly = int(table_center_y - logo.height / 2)
+            table_overlay.alpha_composite(logo, (lx, ly))
 
         overlay_draw.rounded_rectangle(
             outer_top_bbox,
