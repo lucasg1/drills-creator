@@ -43,7 +43,9 @@ class TableDrawer:
         highlight_color = (40, 40, 40, 255)
         bg = Image.new("RGBA", (self.config.width, self.config.height), base_color)
 
-        highlight = Image.new("RGBA", (self.config.width, self.config.height), highlight_color)
+        highlight = Image.new(
+            "RGBA", (self.config.width, self.config.height), highlight_color
+        )
         mask = Image.new("L", (self.config.width, self.config.height), 0)
         mask_draw = ImageDraw.Draw(mask)
 
@@ -111,7 +113,9 @@ class TableDrawer:
         # ------------------------------------------------------------------
         # Background shadow of the table
         # ------------------------------------------------------------------
-        shadow_overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        shadow_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
         shadow_draw = ImageDraw.Draw(shadow_overlay, "RGBA")
         shadow_offset = depth * 2
         shadow_bbox = [
@@ -141,9 +145,7 @@ class TableDrawer:
             radius=radius + border_thickness,
             fill=wood_color,
         )
-        overlay_draw.rounded_rectangle(
-            bottom_bbox, radius=radius, fill=darker_color
-        )
+        overlay_draw.rounded_rectangle(bottom_bbox, radius=radius, fill=darker_color)
 
         # Draw the flat wooden border on top
         overlay_draw.rounded_rectangle(
@@ -186,7 +188,9 @@ class TableDrawer:
         shadow_mask = shadow_mask.filter(
             ImageFilter.GaussianBlur(radius=max(1, inner_width // 2))
         )
-        inner_shadow = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 80))
+        inner_shadow = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 80)
+        )
         inner_shadow.putalpha(shadow_mask)
         table_overlay = Image.alpha_composite(table_overlay, inner_shadow)
 
@@ -215,9 +219,9 @@ class TableDrawer:
             logo = Image.open(logo_path).convert("RGBA")
             max_w = accent_bbox[2] - accent_bbox[0]
             max_h = accent_bbox[3] - accent_bbox[1]
-            logo.thumbnail((max_w, max_h), Image.LANCZOS)
-            logo = logo.rotate(-5, resample=Image.BICUBIC, expand=True)
-            alpha = logo.split()[-1].point(lambda a: int(a * 0.7))
+            target_size = (int(max_w * 0.5), int(max_h * 0.5))
+            logo.thumbnail(target_size, Image.LANCZOS)
+            alpha = logo.split()[-1].point(lambda a: int(a * 0.2))
             logo.putalpha(alpha)
             lx = int(table_center_x - logo.width / 2)
             ly = int(table_center_y - logo.height / 2)
