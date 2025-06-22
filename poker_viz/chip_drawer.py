@@ -197,9 +197,16 @@ class ChipDrawer:
                 dx /= length
                 dy /= length
 
-            # Position chips 75% of the way from player to center
-            chip_x = x + dx * (length * 0.75)
-            chip_y = y + dy * (length * 0.75)
+            # Custom distance from each player to center to fine tune chip placement
+            distance_factors = {
+                6: 0.6,  # Right side players
+                7: 0.6,
+                8: 0.6,
+            }
+            distance = distance_factors.get(seat_index, 0.7)
+
+            chip_x = x + dx * (length * distance)
+            chip_y = y + dy * (length * distance)
 
             # Break the chip value into known denominations
             denominations = [100, 50, 10, 5, 1, 0.5, 0.1]
@@ -216,7 +223,9 @@ class ChipDrawer:
             for idx, denom in enumerate(stack):
                 self._draw_chip(chip_x, chip_y - idx * stack_spacing, chip_colors[denom])
 
-            chip_text = f"{chips:.1f}" if chips < 10 else f"{chips:.0f}"
+            chip_text = (
+                f"{chips:.1f} BB" if chips < 10 else f"{chips:.0f} BB"
+            )
             text_y = chip_y - (len(stack) - 1) * stack_spacing / 2 - self.player_font.getbbox(chip_text)[3] / 2
             self.draw.text(
                 (
