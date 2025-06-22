@@ -64,7 +64,7 @@ class TableDrawer:
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # ------------------------------------------------------------------
-        # Draw the table using two ellipses to simulate perspective
+        # Draw the table using rounded rectangles to simulate perspective
         table_left = table_center_x - table_width // 2
         table_top = table_center_y - table_height // 2
         table_right = table_left + table_width
@@ -75,6 +75,9 @@ class TableDrawer:
 
         # Thickness of the table for the 3D look
         depth = max(6, table_height // 12)
+
+        # Radius for the rounded edges (half the height makes the sides straight)
+        radius = table_height // 2
 
         top_bbox = [table_left, table_top, table_right, table_bottom]
         bottom_bbox = [table_left, table_top + depth, table_right, table_bottom + depth]
@@ -113,7 +116,9 @@ class TableDrawer:
             table_right + border_thickness + shadow_offset,
             table_bottom + depth + border_thickness + shadow_offset,
         ]
-        shadow_draw.ellipse(shadow_bbox, fill=(0, 0, 0, 120))
+        shadow_draw.rounded_rectangle(
+            shadow_bbox, radius=radius + border_thickness, fill=(0, 0, 0, 120)
+        )
         shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=depth))
         self.img = Image.alpha_composite(self.img, shadow_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
@@ -127,14 +132,38 @@ class TableDrawer:
         overlay_draw = ImageDraw.Draw(table_overlay, "RGBA")
 
         # Draw wooden border with simple 3D look
-        overlay_draw.ellipse(outer_bottom_bbox, fill=wood_darker)
-        overlay_draw.ellipse(bottom_bbox, fill=darker_color)
-        overlay_draw.ellipse(outer_top_bbox, fill=wood_color)
-        overlay_draw.ellipse(top_bbox, fill=table_color)
+        overlay_draw.rounded_rectangle(
+            outer_bottom_bbox,
+            radius=radius + border_thickness,
+            fill=wood_darker,
+        )
+        overlay_draw.rounded_rectangle(
+            bottom_bbox, radius=radius, fill=darker_color
+        )
+        overlay_draw.rounded_rectangle(
+            outer_top_bbox, radius=radius + border_thickness, fill=wood_color
+        )
+        overlay_draw.rounded_rectangle(top_bbox, radius=radius, fill=table_color)
 
         line_width = 3 * scale_factor
-        overlay_draw.ellipse(outer_top_bbox, outline=(0, 0, 0, 255), width=line_width)
-        overlay_draw.ellipse(top_bbox, outline=(0, 0, 0, 255), width=line_width)
+        wood_light = tuple(min(255, c + 40) for c in wood_color[:3]) + (
+            wood_color[3],
+        )
+        overlay_draw.rounded_rectangle(
+            outer_top_bbox,
+            radius=radius + border_thickness,
+            outline=wood_light,
+            width=max(1, border_thickness // 2),
+        )
+        overlay_draw.rounded_rectangle(
+            outer_top_bbox,
+            radius=radius + border_thickness,
+            outline=(0, 0, 0, 255),
+            width=line_width,
+        )
+        overlay_draw.rounded_rectangle(
+            top_bbox, radius=radius, outline=(0, 0, 0, 255), width=line_width
+        )
 
         self.img = Image.alpha_composite(self.img, table_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
