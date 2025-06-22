@@ -66,15 +66,15 @@ class PokerTableConfig:
         # Common positions used across different table sizes
         bottom_middle = (
             self.table_center_x,
-            self.table_center_y + self.table_height * 0.7,
+            self.table_center_y + self.table_height * 0.75,
         )
         bottom_left = (
-            self.table_center_x - self.table_width * 0.25,
-            self.table_center_y + self.table_height * 0.7,
+            self.table_center_x - self.table_width * 0.3,
+            self.table_center_y + self.table_height * 0.65,
         )
         bottom_right = (
-            self.table_center_x + self.table_width * 0.25,
-            self.table_center_y + self.table_height * 0.7,
+            self.table_center_x + self.table_width * 0.3,
+            self.table_center_y + self.table_height * 0.65,
         )
         left_middle = (
             self.table_center_x - self.table_width * 0.5,
@@ -85,16 +85,16 @@ class PokerTableConfig:
             self.table_center_y,
         )
         top_left = (
-            self.table_center_x - self.table_width * 0.25,
-            self.table_center_y - self.table_height * 0.55,
+            self.table_center_x - self.table_width * 0.30,
+            self.table_center_y - self.table_height * 0.50,
         )
         top_middle = (
             self.table_center_x,
-            self.table_center_y - self.table_height * 0.55,
+            self.table_center_y - self.table_height * 0.60,
         )
         top_right = (
-            self.table_center_x + self.table_width * 0.25,
-            self.table_center_y - self.table_height * 0.55,
+            self.table_center_x + self.table_width * 0.3,
+            self.table_center_y - self.table_height * 0.50,
         )
         right_top = (
             self.table_center_x + self.table_width * 0.50,
