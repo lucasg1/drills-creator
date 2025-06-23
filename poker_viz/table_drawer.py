@@ -3,6 +3,7 @@ Module for drawing the poker table and its components.
 """
 
 from PIL import Image, ImageDraw, ImageFilter
+import os
 
 
 class TableDrawer:
@@ -42,7 +43,9 @@ class TableDrawer:
         highlight_color = (40, 40, 40, 255)
         bg = Image.new("RGBA", (self.config.width, self.config.height), base_color)
 
-        highlight = Image.new("RGBA", (self.config.width, self.config.height), highlight_color)
+        highlight = Image.new(
+            "RGBA", (self.config.width, self.config.height), highlight_color
+        )
         mask = Image.new("L", (self.config.width, self.config.height), 0)
         mask_draw = ImageDraw.Draw(mask)
 
@@ -110,7 +113,9 @@ class TableDrawer:
         # ------------------------------------------------------------------
         # Background shadow of the table
         # ------------------------------------------------------------------
-        shadow_overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        shadow_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
         shadow_draw = ImageDraw.Draw(shadow_overlay, "RGBA")
         shadow_offset = depth * 2
         shadow_bbox = [
@@ -140,9 +145,7 @@ class TableDrawer:
             radius=radius + border_thickness,
             fill=wood_color,
         )
-        overlay_draw.rounded_rectangle(
-            bottom_bbox, radius=radius, fill=darker_color
-        )
+        overlay_draw.rounded_rectangle(bottom_bbox, radius=radius, fill=darker_color)
 
         # Draw the flat wooden border on top
         overlay_draw.rounded_rectangle(
@@ -185,9 +188,46 @@ class TableDrawer:
         shadow_mask = shadow_mask.filter(
             ImageFilter.GaussianBlur(radius=max(1, inner_width // 2))
         )
-        inner_shadow = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 80))
+        inner_shadow = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 80)
+        )
         inner_shadow.putalpha(shadow_mask)
         table_overlay = Image.alpha_composite(table_overlay, inner_shadow)
+
+        # --------------------------------------------------------------
+        # Accent line and center logo
+        # --------------------------------------------------------------
+        accent_inset = max(1, border_thickness // 3)
+        accent_bbox = [
+            top_bbox[0] + accent_inset,
+            top_bbox[1] + accent_inset,
+            top_bbox[2] - accent_inset,
+            top_bbox[3] - accent_inset,
+        ]
+        overlay_draw.rounded_rectangle(
+            accent_bbox,
+            radius=radius - accent_inset,
+            outline=(255, 255, 255, 80),
+            width=max(1, line_width // 2),
+        )
+
+        logo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "flow_logo.png",
+        )
+        logo_height = 0
+        if os.path.exists(logo_path):
+            logo = Image.open(logo_path).convert("RGBA")
+            max_w = accent_bbox[2] - accent_bbox[0]
+            max_h = accent_bbox[3] - accent_bbox[1]
+            target_size = (int(max_w * 0.5), int(max_h * 0.5))
+            logo.thumbnail(target_size, Image.LANCZOS)
+            alpha = logo.split()[-1].point(lambda a: int(a * 0.2))
+            logo.putalpha(alpha)
+            logo_height = logo.height
+            lx = int(table_center_x - logo.width / 2)
+            ly = int(table_center_y - logo.height / 2)
+            table_overlay.alpha_composite(logo, (lx, ly))
 
         overlay_draw.rounded_rectangle(
             outer_top_bbox,
@@ -202,14 +242,27 @@ class TableDrawer:
         self.img = Image.alpha_composite(self.img, table_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-        # Draw the pot
+        # Scenario description above the logo
+        scenario_text = self.game_data.get_scenario_description()
+        scenario_width = self.draw.textlength(scenario_text, font=self.title_font)
+        scenario_height = self.title_font.getbbox(scenario_text)[3]
+        scenario_y = table_center_y - logo_height / 2 - scenario_height - 5
+        # self.draw.text(
+        #     (table_center_x - scenario_width / 2, scenario_y),
+        #     scenario_text,
+        #     fill=text_color,
+        #     font=self.player_font,
+        # )
+
+        # Draw the pot below the logo
         pot_text = f"Pot: {self.game_data.pot} BB"
-        text_width = self.draw.textlength(pot_text, font=self.title_font)
+        pot_width = self.draw.textlength(pot_text, font=self.player_font)
+        pot_y = table_center_y + logo_height / 4 + 15
         self.draw.text(
-            (table_center_x - text_width / 2, table_center_y - 20),
+            (table_center_x - pot_width / 2, pot_y),
             pot_text,
             fill=text_color,
-            font=self.title_font,
+            font=self.player_font,
         )
 
         return self.img, self.draw

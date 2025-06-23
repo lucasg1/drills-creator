@@ -41,6 +41,20 @@ class GameDataProcessor:
             # Convert chips_on_table to float or default to 0
             player["chips_on_table"] = float(player.get("chips_on_table", 0))
 
+    def get_scenario_description(self):
+        """Return a simple scenario description string."""
+        if not self.players:
+            return ""
+
+        avg_stack = sum(float(p.get("stack", 0)) for p in self.players) / len(
+            self.players
+        )
+        players_left = len(self.players)
+
+        avg_stack_bb = int(round(avg_stack))
+
+        return f"{avg_stack_bb}bb, {players_left} players"
+
     def get_position_mapping(self):
         """
         Calculate position mapping based on hero position.
