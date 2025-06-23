@@ -219,7 +219,7 @@ class TableDrawer:
             logo = Image.open(logo_path).convert("RGBA")
             max_w = accent_bbox[2] - accent_bbox[0]
             max_h = accent_bbox[3] - accent_bbox[1]
-            target_size = (int(max_w * 0.5), int(max_h * 0.5))
+            target_size = (int(max_w * 0.35), int(max_h * 0.35))
             logo.thumbnail(target_size, Image.LANCZOS)
             alpha = logo.split()[-1].point(lambda a: int(a * 0.2))
             logo.putalpha(alpha)
