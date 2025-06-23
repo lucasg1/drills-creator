@@ -42,7 +42,7 @@ class ChipDrawer:
         # ------------------------------------------------------------------
         # Perspective setup - compress chip height so it looks flat on table
         # ------------------------------------------------------------------
-        chip_height_ratio = 0.4
+        chip_height_ratio = 0.6
         ellipse_height = int(chip_radius * 2 * chip_height_ratio)
 
         # ------------------------------------------------------------------
@@ -136,6 +136,14 @@ class ChipDrawer:
 
         chip_img = chip_img.resize((chip_size, ellipse_height), Image.LANCZOS)
 
+        # ------------------------------------------------------------------
+        # Chip thickness - draw a darker copy slightly offset downward
+        # ------------------------------------------------------------------
+        thickness = int(scale_factor * 4)
+        edge_color = tuple(max(0, c - 30) for c in chip_color)
+        edge_img = Image.new("RGBA", chip_img.size, edge_color)
+        edge_img.putalpha(chip_img.split()[3])
+
         chip_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
@@ -143,6 +151,7 @@ class ChipDrawer:
             int(chip_x - chip_radius),
             int(chip_y - ellipse_height / 2),
         )
+        chip_overlay.paste(edge_img, (top_left[0], top_left[1] + thickness), edge_img)
         chip_overlay.paste(chip_img, top_left, chip_img)
 
         self.img = Image.alpha_composite(self.img, chip_overlay)
