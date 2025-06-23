@@ -220,26 +220,11 @@ class TableDrawer:
             logo = Image.open(logo_path).convert("RGBA")
             max_w = accent_bbox[2] - accent_bbox[0]
             max_h = accent_bbox[3] - accent_bbox[1]
+            target_size = (int(max_w * 0.5), int(max_h * 0.5))
+            logo.thumbnail(target_size, Image.LANCZOS)
+            alpha = logo.split()[-1].point(lambda a: int(a * 0.2))
+            logo.putalpha(alpha)
             logo_height = logo.height
-        # Scenario description above the logo
-        scenario_text = self.game_data.get_scenario_description()
-        scenario_width = self.draw.textlength(scenario_text, font=self.title_font)
-        scenario_height = self.title_font.getbbox(scenario_text)[3]
-        scenario_y = (
-            table_center_y - logo_height / 2 - scenario_height - 5
-        )
-        self.draw.text(
-            (table_center_x - scenario_width / 2, scenario_y),
-            scenario_text,
-            fill=text_color,
-            font=self.title_font,
-        )
-
-        # Draw the pot below the logo
-        pot_width = self.draw.textlength(pot_text, font=self.player_font)
-        pot_y = table_center_y + logo_height / 2 + 5
-            (table_center_x - pot_width / 2, pot_y),
-            font=self.player_font,
             lx = int(table_center_x - logo.width / 2)
             ly = int(table_center_y - logo.height / 2)
             table_overlay.alpha_composite(logo, (lx, ly))
@@ -257,14 +242,27 @@ class TableDrawer:
         self.img = Image.alpha_composite(self.img, table_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-        # Draw the pot
+        # Scenario description above the logo
+        scenario_text = self.game_data.get_scenario_description()
+        scenario_width = self.draw.textlength(scenario_text, font=self.title_font)
+        scenario_height = self.title_font.getbbox(scenario_text)[3]
+        scenario_y = table_center_y - logo_height / 2 - scenario_height - 5
+        # self.draw.text(
+        #     (table_center_x - scenario_width / 2, scenario_y),
+        #     scenario_text,
+        #     fill=text_color,
+        #     font=self.player_font,
+        # )
+
+        # Draw the pot below the logo
         pot_text = f"Pot: {self.game_data.pot} BB"
-        text_width = self.draw.textlength(pot_text, font=self.title_font)
+        pot_width = self.draw.textlength(pot_text, font=self.player_font)
+        pot_y = table_center_y + logo_height / 4 + 15
         self.draw.text(
-            (table_center_x - text_width / 2, table_center_y - 20),
+            (table_center_x - pot_width / 2, pot_y),
             pot_text,
             fill=text_color,
-            font=self.title_font,
+            font=self.player_font,
         )
 
         return self.img, self.draw
