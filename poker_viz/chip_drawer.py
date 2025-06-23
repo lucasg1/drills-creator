@@ -40,38 +40,52 @@ class ChipDrawer:
         notch_color = (255, 255, 255, 255)
 
         # ------------------------------------------------------------------
-        # Optional shadow for a slight 3D effect
+        # Perspective setup - compress chip height so it looks flat on table
         # ------------------------------------------------------------------
+        chip_height_ratio = 0.4
+        ellipse_height = int(chip_radius * 2 * chip_height_ratio)
+
+        # ------------------------------------------------------------------
+        # Shadow drawing
+        # ------------------------------------------------------------------
+        shadow_size = int(chip_radius * 2)
+        shadow_img = Image.new("RGBA", (shadow_size, shadow_size), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow_img)
+        shadow_draw.ellipse(
+            [0, 0, shadow_size, shadow_size], fill=(0, 0, 0, 80)
+        )
+        shadow_img = shadow_img.resize(
+            (shadow_size, ellipse_height), Image.LANCZOS
+        )
+
         shadow_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
-        shadow_draw = ImageDraw.Draw(shadow_overlay, "RGBA")
         shadow_offset = int(scale_factor)
-        shadow_bbox = [
-            chip_x - chip_radius + shadow_offset,
-            chip_y - chip_radius + shadow_offset,
-            chip_x + chip_radius + shadow_offset,
-            chip_y + chip_radius + shadow_offset,
-        ]
-        shadow_draw.ellipse(shadow_bbox, fill=(0, 0, 0, 80))
-        shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=scale_factor))
+        shadow_top_left = (
+            int(chip_x - chip_radius + shadow_offset),
+            int(chip_y - ellipse_height / 2 + shadow_offset),
+        )
+        shadow_overlay.paste(shadow_img, shadow_top_left, shadow_img)
+        shadow_overlay = shadow_overlay.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor)
+        )
         self.img = Image.alpha_composite(self.img, shadow_overlay)
 
         # ------------------------------------------------------------------
-        # Base chip drawing
+        # Base chip drawing on a separate image then scaled to ellipse
         # ------------------------------------------------------------------
-        chip_overlay = Image.new(
-            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
-        )
-        overlay_draw = ImageDraw.Draw(chip_overlay, "RGBA")
+        chip_size = int(chip_radius * 2)
+        chip_img = Image.new("RGBA", (chip_size, chip_size), (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(chip_img, "RGBA")
 
-        outer_bbox = [
-            chip_x - chip_radius,
-            chip_y - chip_radius,
-            chip_x + chip_radius,
-            chip_y + chip_radius,
-        ]
-        overlay_draw.ellipse(outer_bbox, fill=chip_color, outline=chip_border_color, width=int(scale_factor))
+        outer_bbox = [0, 0, chip_size, chip_size]
+        overlay_draw.ellipse(
+            outer_bbox,
+            fill=chip_color,
+            outline=chip_border_color,
+            width=int(scale_factor),
+        )
 
         # Edge marks around the rim
         num_notches = 8
@@ -84,20 +98,20 @@ class ChipDrawer:
         # Cover inner part of the notches to create rectangles on the rim
         inner_rim_radius = chip_radius - rim_width
         inner_rim_bbox = [
-            chip_x - inner_rim_radius,
-            chip_y - inner_rim_radius,
-            chip_x + inner_rim_radius,
-            chip_y + inner_rim_radius,
+            chip_radius - inner_rim_radius,
+            chip_radius - inner_rim_radius,
+            chip_radius + inner_rim_radius,
+            chip_radius + inner_rim_radius,
         ]
         overlay_draw.ellipse(inner_rim_bbox, fill=chip_color)
 
         # Inner circle for label area
         label_radius = inner_rim_radius * 0.6
         label_bbox = [
-            chip_x - label_radius,
-            chip_y - label_radius,
-            chip_x + label_radius,
-            chip_y + label_radius,
+            chip_radius - label_radius,
+            chip_radius - label_radius,
+            chip_radius + label_radius,
+            chip_radius + label_radius,
         ]
         overlay_draw.ellipse(
             label_bbox,
@@ -109,16 +123,27 @@ class ChipDrawer:
         # Simple highlight arc for a touch of depth
         overlay_draw.arc(
             [
-                chip_x - label_radius,
-                chip_y - label_radius,
-                chip_x + label_radius,
-                chip_y + label_radius,
+                chip_radius - label_radius,
+                chip_radius - label_radius,
+                chip_radius + label_radius,
+                chip_radius + label_radius,
             ],
             start=20,
             end=160,
             fill=(220, 220, 220, 180),
             width=int(scale_factor),
         )
+
+        chip_img = chip_img.resize((chip_size, ellipse_height), Image.LANCZOS)
+
+        chip_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        top_left = (
+            int(chip_x - chip_radius),
+            int(chip_y - ellipse_height / 2),
+        )
+        chip_overlay.paste(chip_img, top_left, chip_img)
 
         self.img = Image.alpha_composite(self.img, chip_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
