@@ -17,6 +17,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Strategy percentage at which an action receives full score
+FULL_SCORE_THRESHOLD = 30.0  # percent
+
 
 class BatchVisualizer:
     def __init__(
@@ -42,6 +45,8 @@ class BatchVisualizer:
         depth (str, optional): Filter by specific stack depth
         position (str, optional): Filter by specific position
         num_hands (int, optional): Number of hardest hands to extract per file
+        Each hand will also include a score per action from 0-10 reflecting
+        how often that action should be chosen.
         """
         self.solutions_dir = Path(solutions_dir)
         self.output_dir = Path(output_dir)
@@ -242,11 +247,32 @@ class BatchVisualizer:
             # Sort by difficulty and take the hardest hands
             filtered_df = filtered_df.sort_values("difficulty").head(self.num_hands)
 
+            # Compute score for each action based on its strategy percentage
+            def compute_scores(row):
+                scores = {}
+                for code in action_codes:
+                    strat = row.get(f"{code}_strat", 0)
+                    score = 10 * min(1.0, strat / FULL_SCORE_THRESHOLD)
+                    scores[code] = score
+
+                max_score = max(scores.values()) if scores else 0
+                if 0 < max_score < 10:
+                    factor = 10.0 / max_score
+                    scores = {c: s * factor for c, s in scores.items()}
+                elif max_score == 0 and action_codes:
+                    best = row["best_action"]
+                    scores = {c: (10 if c == best else 0) for c in action_codes}
+                return pd.Series(scores)
+
+            score_df = filtered_df.apply(compute_scores, axis=1)
+            filtered_df = pd.concat([filtered_df, score_df], axis=1)
+
             # Prepare columns for the result dataframe
             result_columns = ["hand"]
             for code in action_codes:
                 result_columns.append(f"{code}_strat")
                 result_columns.append(f"{code}_ev")
+                result_columns.append(f"{code}_score")
 
             result_columns.extend(["best_action", "best_ev", "difficulty"])
 
@@ -338,7 +364,11 @@ class BatchVisualizer:
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description="Batch process poker solution files and create visualizations"
+        description=(
+            "Batch process poker solution files, extract the hardest hands "
+            "and create visualizations. The resulting CSV also contains a "
+            "score (0-10) for each possible action."
+        )
     )
 
     parser.add_argument(
