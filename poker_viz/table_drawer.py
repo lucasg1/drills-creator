@@ -244,9 +244,9 @@ class TableDrawer:
 
         # Scenario description above the logo
         scenario_text = self.game_data.get_scenario_description()
-        scenario_width = self.draw.textlength(scenario_text, font=self.title_font)
+        scenario_width = self.draw.textlength(scenario_text, font=self.player_font)
         scenario_height = self.title_font.getbbox(scenario_text)[3]
-        scenario_y = table_center_y - logo_height / 2 - scenario_height - 5
+        scenario_y = table_center_y - logo_height / 4 - scenario_height - 10
         self.draw.text(
             (table_center_x - scenario_width / 2, scenario_y),
             scenario_text,
