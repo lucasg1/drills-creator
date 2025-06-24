@@ -5,7 +5,7 @@ import urllib.parse
 from pathlib import Path
 
 # === CONFIGURATION ===
-HAR_FILE = "network_log.har"  # Path to your HAR file
+HAR_FILE = "rest_symmetric.har"  # Path to your HAR file
 BASE_OUTPUT_DIR = "poker_solutions"  # Base directory to save the extracted JSONs
 
 # === CREATE BASE OUTPUT DIRECTORY ===
