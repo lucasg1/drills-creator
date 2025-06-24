@@ -17,7 +17,12 @@ class PokerTableVisualizer:
     """Main class for creating poker table visualizations."""
 
     def __init__(
-        self, json_data, card1=None, card2=None, output_path="poker_table.png"
+        self,
+        json_data,
+        card1=None,
+        card2=None,
+        output_path="poker_table.png",
+        solution_path=None,
     ):
         """
         Initialize the poker table visualizer.
@@ -32,6 +37,7 @@ class PokerTableVisualizer:
         self.card1 = card1
         self.card2 = card2
         self.output_path = output_path
+        self.solution_path = solution_path
 
         # Path to card images
         self.cards_folder = os.path.join(
@@ -55,7 +61,7 @@ class PokerTableVisualizer:
         self.title_font, self.player_font, self.card_font = self.config.load_fonts()
 
         # Process game data
-        self.game_data = GameDataProcessor(json_data)
+        self.game_data = GameDataProcessor(json_data, solution_path=solution_path)
 
         # Initialize drawers
         self._init_drawers()
@@ -188,7 +194,7 @@ def main():
     card2 = "Kd"  # King of diamonds - change this as needed
 
     # Create the visualization
-    visualizer = PokerTableVisualizer(data, card1, card2)
+    visualizer = PokerTableVisualizer(data, card1, card2, solution_path=json_file)
     output_path = visualizer.create_visualization()
 
     print(f"Open {output_path} to see the poker table visualization")

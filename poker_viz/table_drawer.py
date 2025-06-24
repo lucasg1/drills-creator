@@ -247,12 +247,12 @@ class TableDrawer:
         scenario_width = self.draw.textlength(scenario_text, font=self.title_font)
         scenario_height = self.title_font.getbbox(scenario_text)[3]
         scenario_y = table_center_y - logo_height / 2 - scenario_height - 5
-        # self.draw.text(
-        #     (table_center_x - scenario_width / 2, scenario_y),
-        #     scenario_text,
-        #     fill=text_color,
-        #     font=self.player_font,
-        # )
+        self.draw.text(
+            (table_center_x - scenario_width / 2, scenario_y),
+            scenario_text,
+            fill=text_color,
+            font=self.player_font,
+        )
 
         # Draw the pot below the logo
         pot_text = f"Pot: {self.game_data.pot} BB"
