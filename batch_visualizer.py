@@ -23,8 +23,8 @@ class BatchVisualizer:
         self,
         solutions_dir="poker_solutions",
         output_dir="visualizations",
-        min_threshold=0.009,
-        max_threshold=0.05,
+        min_threshold=None,
+        max_threshold=None,
         num_hands=20,
         game_type=None,
         depth=None,
@@ -36,8 +36,8 @@ class BatchVisualizer:
         Parameters:
         solutions_dir (str): Path to the directory with solution JSON files
         output_dir (str): Path to directory where visualizations will be saved
-        min_threshold (float): Minimum EV threshold for filtering hands
-        max_threshold (float): Maximum EV threshold for filtering hands
+        min_threshold (float, optional): Minimum EV threshold for filtering hands
+        max_threshold (float, optional): Maximum EV threshold for filtering hands
         game_type (str, optional): Filter by specific game type
         depth (str, optional): Filter by specific stack depth
         position (str, optional): Filter by specific position
@@ -196,19 +196,24 @@ class BatchVisualizer:
             )
 
             # Optional EV filtering if thresholds are specified
-            filtered_df = df_solutions[
-                (df_solutions["best_ev"] >= self.min_threshold)
-                & (df_solutions["best_ev"] <= self.max_threshold)
-            ].copy()
+            filtered_df = df_solutions
+            if self.min_threshold is not None:
+                filtered_df = filtered_df[filtered_df["best_ev"] >= self.min_threshold]
+            if self.max_threshold is not None:
+                filtered_df = filtered_df[filtered_df["best_ev"] <= self.max_threshold]
+            filtered_df = filtered_df.copy()
 
             # Update stats
             self.stats["total_hands"] += len(df_solutions)
             self.stats["filtered_hands"] += len(filtered_df)
 
             if filtered_df.empty:
-                logger.info(
-                    f"No hands found after applying EV thresholds {self.min_threshold} to {self.max_threshold}"
-                )
+                if self.min_threshold is not None or self.max_threshold is not None:
+                    logger.info(
+                        f"No hands found after applying EV thresholds {self.min_threshold} to {self.max_threshold}"
+                    )
+                else:
+                    logger.info("No hands found in solution")
                 self.stats["skipped_files"] += 1
                 return
 
@@ -290,9 +295,10 @@ class BatchVisualizer:
                 f.write(f"Solution: {scenario_name}\n")
                 f.write(f"Total hands: {len(df_solutions)}\n")
                 f.write(f"Filtered hands: {len(filtered_df)}\n")
-                f.write(
-                    f"EV range: {self.min_threshold} to {self.max_threshold}\n"
-                )
+                if self.min_threshold is not None or self.max_threshold is not None:
+                    f.write(
+                        f"EV range: {self.min_threshold} to {self.max_threshold}\n"
+                    )
                 f.write(f"Top {self.num_hands} hardest hands\n\n")
 
                 f.write("Hands by action:\n")
@@ -344,10 +350,10 @@ def main():
         "--output", default="visualizations", help="Directory to save visualizations"
     )
     parser.add_argument(
-        "--min-ev", type=float, default=0.009, help="Minimum EV threshold"
+        "--min-ev", type=float, default=None, help="Minimum EV threshold"
     )
     parser.add_argument(
-        "--max-ev", type=float, default=0.05, help="Maximum EV threshold"
+        "--max-ev", type=float, default=None, help="Maximum EV threshold"
     )
     parser.add_argument(
         "--num-hands",
