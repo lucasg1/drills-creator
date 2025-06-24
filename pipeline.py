@@ -31,13 +31,28 @@ for index, row in df_solutions.iterrows():
 if filtered_hands:
     filtered_df = pd.DataFrame(filtered_hands)
 
-    # Create a result DataFrame with custom columns
-    result_df = filtered_df[["hand", "best_action"]].copy()
+    # Dynamically gather all action codes from the dataframe columns
+    action_codes = [
+        col[:-6] for col in df_solutions.columns if col.endswith("_strat")
+    ]
 
-    # Add a new column for the best action's EV
-    result_df["best_ev"] = filtered_df.apply(
+    # Prepare columns for the result dataframe
+    result_columns = ["hand"]
+    for code in action_codes:
+        result_columns.append(f"{code}_strat")
+        result_columns.append(f"{code}_ev")
+
+    result_columns.append("best_action")
+
+    # Compute the EV for the best action on each row
+    filtered_df["best_ev"] = filtered_df.apply(
         lambda row: row[f"{row['best_action']}_ev"], axis=1
     )
+
+    result_columns.append("best_ev")
+
+    # Create the result dataframe with all strategies and EVs
+    result_df = filtered_df[result_columns].copy()
 
     # Sort by best_ev in ascending order
     result_df = result_df.sort_values("best_ev")
