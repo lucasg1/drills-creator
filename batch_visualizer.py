@@ -253,7 +253,7 @@ class BatchVisualizer:
                 for code in action_codes:
                     strat = row.get(f"{code}_strat", 0)
                     score = 10 * min(1.0, strat / FULL_SCORE_THRESHOLD)
-                    scores[code] = score
+                    scores[f"{code}_score"] = score
 
                 max_score = max(scores.values()) if scores else 0
                 if 0 < max_score < 10:
@@ -261,7 +261,7 @@ class BatchVisualizer:
                     scores = {c: s * factor for c, s in scores.items()}
                 elif max_score == 0 and action_codes:
                     best = row["best_action"]
-                    scores = {c: (10 if c == best else 0) for c in action_codes}
+                    scores = {f"{c}_score": (10 if c == best else 0) for c in action_codes}
                 return pd.Series(scores)
 
             score_df = filtered_df.apply(compute_scores, axis=1)
