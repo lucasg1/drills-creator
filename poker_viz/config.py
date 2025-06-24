@@ -175,15 +175,23 @@ class PokerTableConfig:
             ]
 
     def load_fonts(self):
+        font_dir = r"fonts\static"
+
         """Load fonts with appropriate scaling."""
         try:
-            title_font = ImageFont.truetype("arial.ttf", 32 * self.scale_factor)
-            player_font = ImageFont.truetype("arial.ttf", 20 * self.scale_factor)
-            card_font = ImageFont.truetype("arial.ttf", 24 * self.scale_factor)
+            title_font = ImageFont.truetype(os.path.join(font_dir, "Inter_24pt-Bold.ttf"), int(32 * self.scale_factor))
+            player_font = ImageFont.truetype(os.path.join(font_dir, "Inter_18pt-Regular.ttf"), int(20 * self.scale_factor))
+            card_font = ImageFont.truetype(os.path.join(font_dir, "Inter_24pt-SemiBold.ttf"), int(24 * self.scale_factor))
         except IOError:
-            # Fallback to default font
-            title_font = ImageFont.load_default()
-            player_font = ImageFont.load_default()
-            card_font = ImageFont.load_default()
+            # Fallback to Arial
+            try:
+                title_font = ImageFont.truetype("arial.ttf", int(32 * self.scale_factor))
+                player_font = ImageFont.truetype("arial.ttf", int(20 * self.scale_factor))
+                card_font = ImageFont.truetype("arial.ttf", int(24 * self.scale_factor))
+            except IOError:
+                # Final fallback to default bitmap font
+                title_font = ImageFont.load_default()
+                player_font = ImageFont.load_default()
+                card_font = ImageFont.load_default()
 
         return title_font, player_font, card_font
