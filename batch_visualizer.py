@@ -242,7 +242,11 @@ class BatchVisualizer:
 
                 # Create visualization
                 visualizer = PokerTableVisualizer(
-                    clean_json, card1, card2, str(output_path)
+                    clean_json,
+                    card1,
+                    card2,
+                    str(output_path),
+                    solution_path=str(file_path),
                 )
                 visualizer.create_visualization()
 

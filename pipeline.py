@@ -104,7 +104,13 @@ if filtered_hands:
         output_path = os.path.join(visualization_dir, f"{hand}_{action}_{ev:.6f}.png")
 
         # Create visualization
-        visualizer = PokerTableVisualizer(clean_json, card1, card2, output_path)
+        visualizer = PokerTableVisualizer(
+            clean_json,
+            card1,
+            card2,
+            output_path,
+            solution_path=path,
+        )
         visualizer.create_visualization()
 
         print(
