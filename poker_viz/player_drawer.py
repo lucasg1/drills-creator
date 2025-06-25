@@ -2,7 +2,7 @@
 Module for drawing players and player-related elements.
 """
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 class PlayerDrawer:
@@ -431,9 +431,27 @@ class PlayerDrawer:
         player_radius = self.config.player_radius
         dealer_button_color = self.config.dealer_button_color
 
-        # Position the button slightly to the right of the player rectangle
-        button_x = x + player_radius * 0.7
-        button_y = y - player_radius * 0.7
+        # Position the button on the table but away from the chip stack
+        center_x = self.config.table_center_x
+        center_y = self.config.table_center_y
+        vec_to_center = (
+            center_x - x,
+            center_y - y,
+        )
+        length = (vec_to_center[0] ** 2 + vec_to_center[1] ** 2) ** 0.5 or 1
+
+        # Perpendicular direction (clockwise) so it does not overlap chips
+        perp = (
+            -vec_to_center[1] / length,
+            vec_to_center[0] / length,
+        )
+        toward_center = (
+            vec_to_center[0] / length,
+            vec_to_center[1] / length,
+        )
+
+        button_x = x + perp[0] * player_radius * 0.7 + toward_center[0] * player_radius * 0.2
+        button_y = y + perp[1] * player_radius * 0.7 + toward_center[1] * player_radius * 0.2
 
         # Thickness of the button for a 3D effect
         depth = max(2, int(scale_factor * 2))
@@ -497,11 +515,18 @@ class PlayerDrawer:
 
         # Draw the letter "D" using a bold sans-serif font
         d_text = "D"
-        font = self.title_font if hasattr(self, "title_font") else self.player_font
-        d_width = self.draw.textlength(d_text, font=font)
-        d_height = font.getbbox(d_text)[3]
+        base_font = self.title_font if hasattr(self, "title_font") else self.player_font
+        font_size = int(dealer_radius * 1.3)
+        try:
+            font = base_font.font_variant(size=font_size)
+        except AttributeError:
+            # Fallback if font_variant is not available
+            font = ImageFont.truetype(getattr(base_font, "path", "arial.ttf"), font_size)
+        bbox = font.getbbox(d_text)
+        d_width = bbox[2] - bbox[0]
+        d_height = bbox[3] - bbox[1]
         overlay_draw.text(
-            ((button_size - d_width) / 2, (button_size - d_height) / 2),
+            ((button_size - d_width) / 2, (button_size - d_height) / 2 - bbox[1]),
             d_text,
             fill=(0, 0, 0, 255),
             font=font,
