@@ -29,53 +29,6 @@ class PlayerDrawer:
         self.player_font = player_font
         self.card_font = card_font
 
-    def draw_players(self):
-        """Draw all players around the table (DEPRECATED - use draw_player_circles and draw_player_rectangles instead)."""
-        # Get position mapping
-        position_to_seat = self.game_data.get_position_mapping()
-
-        # Draw each player
-        for player in self.game_data.players:
-            position = player.get("position")
-            is_hero = player.get("is_hero", False)
-
-            # Determine seat index based on position
-            if is_hero:
-                seat_index = 0  # Hero always at bottom middle
-            elif position in position_to_seat:
-                seat_index = position_to_seat[position]
-            else:
-                # Fallback for unknown positions
-                seat_index = 8  # Default to bottom left
-
-            # Get the position coordinates safely
-            x, y = self._get_safe_seat_position(seat_index)
-
-            # Determine player color
-            is_active = (
-                player.get("is_active", False)
-                or player.get("position") == self.game_data.active_position
-            )
-            is_folded = player.get("is_folded", False)
-
-            if is_folded:
-                player_color = self.config.folded_player_color
-            elif is_hero:
-                player_color = self.config.hero_player_color
-            elif is_active:
-                player_color = self.config.active_player_color
-            else:
-                player_color = (
-                    self.config.player_color
-                )  # Draw player background circle and foreground rectangle
-            self._draw_player_elements(x, y, player_color, player)
-
-            # Draw dealer button if this player is the dealer
-            if player.get("is_dealer", False):
-                self._draw_dealer_button(x, y)
-
-        return self.img, self.draw
-
     def draw_player_circles(self):
         """Draw all player background circles around the table."""
         # Get position mapping
@@ -142,10 +95,6 @@ class PlayerDrawer:
 
     def draw_player_rectangles(self):
         """Draw all player info rectangles on top of the background circles."""
-        # Draw each player's rectangle using stored positions
-        if not hasattr(self, "player_positions"):
-            # If draw_player_circles wasn't called first, get the positions now
-            return self.draw_players()
 
         for pos_info in self.player_positions:
             x = pos_info["x"]
