@@ -41,7 +41,8 @@ class PokerTableConfig:
         self.active_player_color = (80, 80, 160, 255)  # Blue for active player
         self.hero_player_color = (80, 160, 80, 255)  # Green for hero
         self.folded_player_color = (50, 50, 50, 255)  # Dark gray for folded
-        self.dealer_button_color = (220, 220, 220, 255)  # Light gray dealer button
+        # Glossy white dealer button
+        self.dealer_button_color = (250, 250, 250, 255)
         # Card colors
         self.card_bg = (255, 255, 255, 255)
         self.red_suits = (220, 40, 40, 255)

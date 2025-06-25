@@ -403,7 +403,6 @@ class PlayerDrawer:
         """Draw a glossy dealer button on the table in front of a player."""
 
         # Position the button between the player and the table center
-        dx = center_x - x
         dy = center_y - y
         length = (dx ** 2 + dy ** 2) ** 0.5 or 1
         # Normalized vectors
@@ -411,7 +410,7 @@ class PlayerDrawer:
         perp = (-toward_center[1], toward_center[0])
 
         # Base distance along the center line
-        dealer_dist = length * 0.4
+        dealer_dist = length * 0.45
         # Offset slightly sideways if chips are present
         side_offset = dealer_radius * 1.3 if player.get("chips_on_table", 0) > 0 else 0
 
@@ -430,7 +429,7 @@ class PlayerDrawer:
         overlay_draw = ImageDraw.Draw(local_img, "RGBA")
 
         border_color = (0, 0, 0, 255)
-        side_color = tuple(max(0, c - 20) for c in dealer_button_color)
+        side_color = tuple(max(0, c - 30) for c in dealer_button_color)
 
         # Draw side (thickness)
         overlay_draw.ellipse(
@@ -453,7 +452,7 @@ class PlayerDrawer:
         highlight_draw = ImageDraw.Draw(highlight)
         highlight_draw.ellipse(
             [0, 0, button_size * 0.6, button_size * 0.6],
-            fill=(255, 255, 255, 80),
+            fill=(255, 255, 255, 90),
         )
         highlight = highlight.filter(ImageFilter.GaussianBlur(radius=scale_factor))
         local_img.alpha_composite(highlight, (0, 0))
@@ -462,7 +461,7 @@ class PlayerDrawer:
         # Draw the letter "D" using a bold sans-serif font
         d_text = "D"
         base_font = self.title_font if hasattr(self, "title_font") else self.player_font
-        font_size = int(dealer_radius * 1.3)
+        font_size = int(dealer_radius * 1.4)
         try:
             font = base_font.font_variant(size=font_size)
         except AttributeError:
