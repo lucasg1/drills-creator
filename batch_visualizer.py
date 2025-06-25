@@ -1,7 +1,6 @@
 import json
 import os
 import pandas as pd
-import shutil
 from pathlib import Path
 import argparse
 from read_solution import read_spot_solution
@@ -18,14 +17,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Strategy percentage at which an action receives full score
+FULL_SCORE_THRESHOLD = 30.0  # percent
+
 
 class BatchVisualizer:
     def __init__(
         self,
         solutions_dir="poker_solutions",
         output_dir="visualizations",
-        min_threshold=0.009,
-        max_threshold=0.05,
+        min_threshold=None,
+        max_threshold=None,
+        num_hands=20,
         game_type=None,
         depth=None,
         position=None,
@@ -36,16 +39,20 @@ class BatchVisualizer:
         Parameters:
         solutions_dir (str): Path to the directory with solution JSON files
         output_dir (str): Path to directory where visualizations will be saved
-        min_threshold (float): Minimum EV threshold for filtering hands
-        max_threshold (float): Maximum EV threshold for filtering hands
+        min_threshold (float, optional): Minimum EV threshold for filtering hands
+        max_threshold (float, optional): Maximum EV threshold for filtering hands
         game_type (str, optional): Filter by specific game type
         depth (str, optional): Filter by specific stack depth
         position (str, optional): Filter by specific position
+        num_hands (int, optional): Number of hardest hands to extract per file
+        Each hand will also include a score per action from 0-10 reflecting
+        how often that action should be chosen.
         """
         self.solutions_dir = Path(solutions_dir)
         self.output_dir = Path(output_dir)
         self.min_threshold = min_threshold
         self.max_threshold = max_threshold
+        self.num_hands = num_hands
         self.game_type = game_type
         self.depth = depth
         self.position = position
@@ -183,61 +190,98 @@ class BatchVisualizer:
             # Read the spot solution
             df_solutions = read_spot_solution(clean_json)
 
-            # Filter hands by EV threshold
-            filtered_hands = []
-            for index, row in df_solutions.iterrows():
-                best_action = row["best_action"]
-                best_ev = row[f"{best_action}_ev"]
-
-                if self.min_threshold <= best_ev <= self.max_threshold:
-                    filtered_hands.append(row)
-
-            # Update stats
-            self.stats["total_hands"] += len(df_solutions)
-            self.stats["filtered_hands"] += len(filtered_hands)
-
-            # If no hands meet the criteria, skip visualization
-            if not filtered_hands:
-                logger.info(
-                    f"No hands found with EV between {self.min_threshold} and {self.max_threshold}"
-                )
-                self.stats["skipped_files"] += 1
-                return
-
-            # Convert to DataFrame and prepare for visualization
-            filtered_df = pd.DataFrame(filtered_hands)
-
             # Dynamically gather all action codes from the dataframe columns
             action_codes = [
                 col[:-6] for col in df_solutions.columns if col.endswith("_strat")
             ]
+
+            # Compute best EV for each row
+            df_solutions["best_ev"] = df_solutions.apply(
+                lambda row: row[f"{row['best_action']}_ev"], axis=1
+            )
+
+            # Optional EV filtering if thresholds are specified
+            filtered_df = df_solutions
+            if self.min_threshold is not None:
+                filtered_df = filtered_df[filtered_df["best_ev"] >= self.min_threshold]
+            if self.max_threshold is not None:
+                filtered_df = filtered_df[filtered_df["best_ev"] <= self.max_threshold]
+            filtered_df = filtered_df.copy()
+
+            # Update stats
+            self.stats["total_hands"] += len(df_solutions)
+            self.stats["filtered_hands"] += len(filtered_df)
+
+            if filtered_df.empty:
+                if self.min_threshold is not None or self.max_threshold is not None:
+                    logger.info(
+                        f"No hands found after applying EV thresholds {self.min_threshold} to {self.max_threshold}"
+                    )
+                else:
+                    logger.info("No hands found in solution")
+                self.stats["skipped_files"] += 1
+                return
+
+            # Calculate difficulty score for each hand
+            def calc_difficulty(row):
+                best_action = row["best_action"]
+                best_ev = row["best_ev"]
+                alt_evs = [
+                    row[f"{code}_ev"]
+                    for code in action_codes
+                    if code != best_action and f"{code}_ev" in row
+                ]
+                alt_max_ev = max(alt_evs) if alt_evs else None
+
+                if best_action == "F":
+                    return abs(alt_max_ev) if alt_max_ev is not None else 0
+                elif best_action.startswith("R"):
+                    return best_ev
+                else:
+                    if alt_max_ev is None:
+                        return abs(best_ev)
+                    return abs(best_ev - alt_max_ev)
+
+            filtered_df["difficulty"] = filtered_df.apply(calc_difficulty, axis=1)
+
+            # Sort by difficulty and take the hardest hands
+            filtered_df = filtered_df.sort_values("difficulty").head(self.num_hands)
+
+            # Compute score for each action based on its strategy percentage
+            def compute_scores(row):
+                scores = {}
+                for code in action_codes:
+                    strat = row.get(f"{code}_strat", 0)
+                    score = 10 * min(1.0, strat / FULL_SCORE_THRESHOLD)
+                    scores[f"{code}_score"] = score
+
+                max_score = max(scores.values()) if scores else 0
+                if 0 < max_score < 10:
+                    factor = 10.0 / max_score
+                    scores = {c: s * factor for c, s in scores.items()}
+                elif max_score == 0 and action_codes:
+                    best = row["best_action"]
+                    scores = {f"{c}_score": (10 if c == best else 0) for c in action_codes}
+                return pd.Series(scores)
+
+            score_df = filtered_df.apply(compute_scores, axis=1)
+            filtered_df = pd.concat([filtered_df, score_df], axis=1)
 
             # Prepare columns for the result dataframe
             result_columns = ["hand"]
             for code in action_codes:
                 result_columns.append(f"{code}_strat")
                 result_columns.append(f"{code}_ev")
+                result_columns.append(f"{code}_score")
 
-            result_columns.append("best_action")
-
-            # Compute the EV for the best action on each row
-            filtered_df["best_ev"] = filtered_df.apply(
-                lambda row: row[f"{row['best_action']}_ev"], axis=1
-            )
-
-            result_columns.append("best_ev")
+            result_columns.extend(["best_action", "best_ev", "difficulty"])
 
             # Create the result dataframe with all strategies and EVs
             result_df = filtered_df[result_columns].copy()
 
-            # Sort by best_ev in ascending order
-            result_df = result_df.sort_values("best_ev")
 
             # Save filtered results to CSV
-            csv_filename = (
-                output_subdir
-                / f"hands_ev_{self.min_threshold}_to_{self.max_threshold}.csv"
-            )
+            csv_filename = output_subdir / f"hardest_{self.num_hands}_hands.csv"
             result_df.to_csv(csv_filename, index=False)
 
             # Create visualizations for each hand
@@ -276,15 +320,19 @@ class BatchVisualizer:
             with open(output_subdir / "summary.txt", "w") as f:
                 f.write(f"Solution: {scenario_name}\n")
                 f.write(f"Total hands: {len(df_solutions)}\n")
-                f.write(f"Filtered hands: {len(filtered_hands)}\n")
-                f.write(f"EV range: {self.min_threshold} to {self.max_threshold}\n\n")
+                f.write(f"Filtered hands: {len(filtered_df)}\n")
+                if self.min_threshold is not None or self.max_threshold is not None:
+                    f.write(
+                        f"EV range: {self.min_threshold} to {self.max_threshold}\n"
+                    )
+                f.write(f"Top {self.num_hands} hardest hands\n\n")
 
                 f.write("Hands by action:\n")
                 action_counts = result_df["best_action"].value_counts()
                 for action, count in action_counts.items():
                     f.write(f"  {action}: {count} hands\n")
 
-            return len(filtered_hands)
+            return len(filtered_df)
 
         except Exception as e:
             logger.error(f"Error processing {file_path}: {e}", exc_info=True)
@@ -316,7 +364,11 @@ class BatchVisualizer:
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description="Batch process poker solution files and create visualizations"
+        description=(
+            "Batch process poker solution files, extract the hardest hands "
+            "and create visualizations. The resulting CSV also contains a "
+            "score (0-10) for each possible action."
+        )
     )
 
     parser.add_argument(
@@ -328,10 +380,16 @@ def main():
         "--output", default="visualizations", help="Directory to save visualizations"
     )
     parser.add_argument(
-        "--min-ev", type=float, default=0.009, help="Minimum EV threshold"
+        "--min-ev", type=float, default=None, help="Minimum EV threshold"
     )
     parser.add_argument(
-        "--max-ev", type=float, default=0.05, help="Maximum EV threshold"
+        "--max-ev", type=float, default=None, help="Maximum EV threshold"
+    )
+    parser.add_argument(
+        "--num-hands",
+        type=int,
+        default=20,
+        help="Number of hardest hands to extract per solution file",
     )
     parser.add_argument("--game-type", help="Filter by game type")
     parser.add_argument("--depth", help="Filter by stack depth")
@@ -345,6 +403,7 @@ def main():
         output_dir=args.output,
         min_threshold=args.min_ev,
         max_threshold=args.max_ev,
+        num_hands=args.num_hands,
         game_type=args.game_type,
         depth=args.depth,
         position=args.position,
