@@ -501,17 +501,6 @@ class PlayerDrawer:
             width=max(1, scale_factor // 2),
         )
 
-        # Soft highlight on the top-left
-        highlight = Image.new("RGBA", local_img.size, (0, 0, 0, 0))
-        highlight_draw = ImageDraw.Draw(highlight)
-        hl_radius = dealer_radius * 0.8
-        highlight_draw.ellipse(
-            [dealer_radius - hl_radius, dealer_radius - hl_radius,
-             dealer_radius, dealer_radius],
-            fill=(255, 255, 255, 120),
-        )
-        highlight = highlight.filter(ImageFilter.GaussianBlur(radius=scale_factor))
-        local_img = Image.alpha_composite(local_img, highlight)
 
         # Draw the letter "D" using a bold sans-serif font
         d_text = "D"
