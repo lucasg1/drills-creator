@@ -48,7 +48,7 @@ class PlayerDrawer:
             elif position in position_to_seat:
                 seat_index = position_to_seat[position]
             else:
-                # Fallback for unknown positions
+                self._draw_dealer_button(x, y, player)
                 seat_index = min(
                     8, len(self.config.seat_positions) - 1
                 )  # Default to bottom left or last available
@@ -138,7 +138,7 @@ class PlayerDrawer:
         )  # Increased offset to position circle more above the rectangle
 
         # Step 1: Draw the background circle with anti-aliasing
-        self._draw_background_circle(x, circle_y, circle_radius, player_color)
+                self._draw_dealer_button(x, y, player)
 
         # Step 2: Here is where player cards would be drawn (between circle and rectangle)
         # Note: This is done in a separate method (typically called from card_drawer.py)
@@ -399,26 +399,24 @@ class PlayerDrawer:
             vec_to_center[1] / length,
         )
 
-        button_x = x + perp[0] * player_radius * 0.7 + toward_center[0] * player_radius * 0.2
-        button_y = y + perp[1] * player_radius * 0.7 + toward_center[1] * player_radius * 0.2
+    def _draw_dealer_button(self, x, y, player):
+        """Draw a glossy dealer button on the table in front of a player."""
 
-        # Thickness of the button for a 3D effect
-        depth = max(2, int(scale_factor * 2))
+        # Position the button between the player and the table center
+        dx = center_x - x
+        dy = center_y - y
+        length = (dx ** 2 + dy ** 2) ** 0.5 or 1
+        # Normalized vectors
+        toward_center = (dx / length, dy / length)
+        perp = (-toward_center[1], toward_center[0])
 
-        # ------------------------------------------------------------------
-        # Drop shadow underneath the button
-        # ------------------------------------------------------------------
-        shadow_size = int(dealer_radius * 2)
-        shadow_img = Image.new("RGBA", (shadow_size, shadow_size), (0, 0, 0, 0))
-        shadow_draw = ImageDraw.Draw(shadow_img)
-        shadow_draw.ellipse([0, 0, shadow_size, shadow_size], fill=(0, 0, 0, 80))
-        shadow_img = shadow_img.resize((shadow_size, int(shadow_size * 0.6)), Image.LANCZOS)
+        # Base distance along the center line
+        dealer_dist = length * 0.4
+        # Offset slightly sideways if chips are present
+        side_offset = dealer_radius * 1.3 if player.get("chips_on_table", 0) > 0 else 0
 
-        shadow_overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
-        shadow_offset = int(scale_factor)
-        shadow_top_left = (
-            int(button_x - dealer_radius + shadow_offset),
-            int(button_y - dealer_radius + depth + shadow_offset),
+        button_x = x + toward_center[0] * dealer_dist + perp[0] * side_offset
+        button_y = y + toward_center[1] * dealer_dist + perp[1] * side_offset
         )
         shadow_overlay.paste(shadow_img, shadow_top_left, shadow_img)
         shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=scale_factor))
@@ -449,6 +447,16 @@ class PlayerDrawer:
             outline=border_color,
             width=max(1, scale_factor // 2),
         )
+
+        # Soft highlight on the top-left edge for gloss
+        highlight = Image.new("RGBA", (button_size, button_size), (255, 255, 255, 0))
+        highlight_draw = ImageDraw.Draw(highlight)
+        highlight_draw.ellipse(
+            [0, 0, button_size * 0.6, button_size * 0.6],
+            fill=(255, 255, 255, 80),
+        )
+        highlight = highlight.filter(ImageFilter.GaussianBlur(radius=scale_factor))
+        local_img.alpha_composite(highlight, (0, 0))
 
 
         # Draw the letter "D" using a bold sans-serif font
