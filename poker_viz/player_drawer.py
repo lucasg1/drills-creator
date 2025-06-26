@@ -72,7 +72,7 @@ class PlayerDrawer:
 
             # Draw dealer button if this player is the dealer
             if player.get("is_dealer", False):
-                self._draw_dealer_button(x, y)
+                self._draw_dealer_button(x, y, seat_index)
 
         return self.img, self.draw
 
@@ -127,6 +127,7 @@ class PlayerDrawer:
                     "color": player_color,
                     "player": player,
                     "is_dealer": player.get("is_dealer", False),
+                    "seat_index": seat_index,
                 }
             )
 
@@ -163,7 +164,7 @@ class PlayerDrawer:
 
             # Draw dealer button if this player is the dealer
             if pos_info["is_dealer"]:
-                self._draw_dealer_button(x, y)
+                self._draw_dealer_button(x, y, pos_info.get("seat_index", 0))
 
         return self.img, self.draw
 
@@ -424,71 +425,108 @@ class PlayerDrawer:
             font=self.player_font,
         )
 
-    def _draw_dealer_button(self, x, y):
-        """Draw the dealer button next to a player."""
+    def _draw_dealer_button(self, x, y, seat_index):
+        """Draw the dealer button next to a player with a simple 3D effect."""
         dealer_radius = 12 * self.config.scale_factor
         player_radius = self.config.player_radius
         scale_factor = self.config.scale_factor
         dealer_button_color = self.config.dealer_button_color
 
-        button_x = x + player_radius * 0.7
-        button_y = y - player_radius * 0.7
+        # --------------------------------------------------------------
+        # Custom offsets so the button does not overlap with chips
+        # --------------------------------------------------------------
+        offset_maps = {
+            8: {
+                0: (1.4, -1.8),
+                1: (1.1, -1.4),
+                2: (0.8, 0.7),
+                3: (0.8, 0.7),
+                4: (0.8, 0.9),
+                5: (0.8, 0.7),
+                6: (-0.8, 0.7),
+                7: (-1.3, -1.4),
+            }
+        }
+        offsets = offset_maps.get(self.config.num_players, {})
+        dx_factor, dy_factor = offsets.get(seat_index, (0.7, -0.7))
+        button_x = x + player_radius * dx_factor
+        button_y = y + player_radius * dy_factor
 
-        # Create a mask for the dealer button
-        button_mask = Image.new("L", (self.config.width, self.config.height), 0)
-        button_mask_draw = ImageDraw.Draw(button_mask)
+        # Height of the button for the 3D look
+        thickness = int(scale_factor * 3)
 
-        # Draw the button on the mask
-        button_mask_draw.ellipse(
-            [
-                button_x - dealer_radius,
-                button_y - dealer_radius,
-                button_x + dealer_radius,
-                button_y + dealer_radius,
-            ],
-            fill=255,
-        )
-
-        # Apply slight blur for smoother edges
-        button_mask = button_mask.filter(
-            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-        )
-
-        # Create a button overlay with the dealer button color
-        button_overlay = Image.new(
+        # --------------------------------------------------------------
+        # Shadow under the button
+        # --------------------------------------------------------------
+        shadow_size = int(dealer_radius * 2)
+        shadow_img = Image.new("RGBA", (shadow_size, shadow_size), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow_img)
+        shadow_draw.ellipse([0, 0, shadow_size, shadow_size], fill=(0, 0, 0, 80))
+        shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(radius=scale_factor))
+        shadow_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
+        shadow_overlay.paste(
+            shadow_img,
+            (
+                int(button_x - dealer_radius + thickness),
+                int(button_y - dealer_radius + thickness),
+            ),
+            shadow_img,
+        )
+        self.img = Image.alpha_composite(self.img, shadow_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-        # Fill the button with the dealer button color
-        for py in range(
-            max(0, int(button_y - dealer_radius - scale_factor * 2)),
-            min(self.config.height, int(button_y + dealer_radius + scale_factor * 2)),
-        ):
-            for px in range(
-                max(0, int(button_x - dealer_radius - scale_factor * 2)),
-                min(
-                    self.config.width, int(button_x + dealer_radius + scale_factor * 2)
-                ),
-            ):
-                mask_value = button_mask.getpixel((px, py))
-                if mask_value > 0:
-                    button_overlay.putpixel(
-                        (px, py), (*dealer_button_color[:3], mask_value)
-                    )
+        # --------------------------------------------------------------
+        # Button thickness - darker ellipse slightly below the top face
+        # --------------------------------------------------------------
+        edge_color = tuple(max(0, c - 40) for c in dealer_button_color[:3]) + (255,)
+        edge_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        edge_draw = ImageDraw.Draw(edge_overlay)
+        edge_draw.ellipse(
+            [
+                button_x - dealer_radius,
+                button_y - dealer_radius + thickness,
+                button_x + dealer_radius,
+                button_y + dealer_radius + thickness,
+            ],
+            fill=edge_color,
+        )
+        self.img = Image.alpha_composite(self.img, edge_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-        # Overlay the button on the main image
-        self.img = Image.alpha_composite(self.img, button_overlay)
-        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+        # --------------------------------------------------------------
+        # Top face of the button
+        # --------------------------------------------------------------
+        button_img = Image.new("RGBA", (shadow_size, shadow_size), (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(button_img, "RGBA")
+        overlay_draw.ellipse(
+            [0, 0, shadow_size, shadow_size],
+            fill=dealer_button_color,
+            outline=(0, 0, 0, 255),
+            width=max(1, scale_factor),
+        )
+        top_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        top_overlay.paste(
+            button_img,
+            (int(button_x - dealer_radius), int(button_y - dealer_radius)),
+            button_img,
+        )
+        self.img = Image.alpha_composite(self.img, top_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-        # Draw "D" in the center of the button
+        # --------------------------------------------------------------
+        # Draw "D" label in the centre
+        # --------------------------------------------------------------
         d_text = "D"
         d_width = self.draw.textlength(d_text, font=self.player_font)
         d_height = self.player_font.getbbox(d_text)[3]
         self.draw.text(
-            (
-                button_x - d_width / 2,
-                button_y - d_height / 2,
-            ),
+            (button_x - d_width / 2, button_y - d_height / 2),
             d_text,
             fill=(0, 0, 0, 255),
             font=self.player_font,
