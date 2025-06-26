@@ -437,14 +437,14 @@ class PlayerDrawer:
         # --------------------------------------------------------------
         offset_maps = {
             8: {
-                0: (0.7, -0.3),
-                1: (-0.6, -0.2),
-                2: (-0.7, 0.0),
-                3: (-0.6, 0.2),
-                4: (0.0, 0.6),
-                5: (0.6, 0.2),
-                6: (0.7, 0.0),
-                7: (0.6, -0.2),
+                0: (1.4, -1.8),
+                1: (1.1, -1.4),
+                2: (0.8, 0.7),
+                3: (0.8, 0.7),
+                4: (0.8, 0.9),
+                5: (0.8, 0.7),
+                6: (-0.8, 0.7),
+                7: (-1.3, -1.4),
             }
         }
         offsets = offset_maps.get(self.config.num_players, {})
@@ -498,7 +498,7 @@ class PlayerDrawer:
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # --------------------------------------------------------------
-        # Top face of the button with a small highlight
+        # Top face of the button
         # --------------------------------------------------------------
         button_img = Image.new("RGBA", (shadow_size, shadow_size), (0, 0, 0, 0))
         overlay_draw = ImageDraw.Draw(button_img, "RGBA")
@@ -506,19 +506,6 @@ class PlayerDrawer:
             [0, 0, shadow_size, shadow_size],
             fill=dealer_button_color,
             outline=(0, 0, 0, 255),
-            width=max(1, scale_factor),
-        )
-        highlight_bbox = [
-            shadow_size * 0.25,
-            shadow_size * 0.15,
-            shadow_size * 0.75,
-            shadow_size * 0.55,
-        ]
-        overlay_draw.arc(
-            highlight_bbox,
-            start=0,
-            end=180,
-            fill=(255, 255, 255, 160),
             width=max(1, scale_factor),
         )
         top_overlay = Image.new(
