@@ -6,13 +6,30 @@ import logging
 from typing import List, Dict, Any, Optional, Union
 from flow_auth import make_authenticated_request, initialize_session
 
+# Helper function to sanitize JSON for logging
+def sanitize_for_log(obj, max_length=50):
+    """Sanitize a JSON object for logging by truncating long strings"""
+    if isinstance(obj, dict):
+        return {k: sanitize_for_log(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        if len(obj) > 5:  # Truncate long lists
+            return [sanitize_for_log(obj[0])] + ["..."] + [sanitize_for_log(obj[-1])]
+        return [sanitize_for_log(i) for i in obj]
+    elif isinstance(obj, str) and len(obj) > max_length:
+        return obj[:max_length] + "..."
+    else:
+        return obj
+
 # Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Change to DEBUG for more verbose output
+    level=logging.INFO,  # Change to INFO for less verbose output
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("drill_creator.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger("drill_creator")
+
+# Set third-party loggers to a higher level to reduce noise
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 class FlowPokerDrillCreator:
@@ -292,7 +309,7 @@ class FlowPokerDrillCreator:
         }
 
         # Log the payload for debugging
-        logger.debug(f"Score answer payload: {json.dumps(payload)}")
+        logger.debug(f"Score answer payload: {sanitize_for_log(payload)}")
 
         # Make the request
         response = make_authenticated_request(
@@ -306,7 +323,9 @@ class FlowPokerDrillCreator:
             # Log response data for debugging
             try:
                 response_data = response.json()
-                logger.debug(f"Score answer response: {json.dumps(response_data)}")
+                # Only log detailed response in debug mode
+                if logger.level <= logging.DEBUG:
+                    logger.debug(f"Score answer response: {sanitize_for_log(response_data)}")
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 
@@ -387,7 +406,7 @@ class FlowPokerDrillCreator:
         }
 
         # Log the payload for debugging
-        logger.debug(f"Promote drill payload: {json.dumps(payload)}")
+        logger.debug(f"Promote drill payload: {sanitize_for_log(payload)}")
 
         # Make the request
         response = make_authenticated_request(
@@ -401,7 +420,8 @@ class FlowPokerDrillCreator:
             # Log response data for debugging
             try:
                 response_data = response.json()
-                logger.debug(f"Promote drill response: {json.dumps(response_data)}")
+                if logger.level <= logging.DEBUG:
+                    logger.debug(f"Promote drill response: {sanitize_for_log(response_data)}")
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 
@@ -451,7 +471,7 @@ class FlowPokerDrillCreator:
         }
 
         # Log the payload for debugging
-        logger.debug(f"Set wizard rules payload: {json.dumps(payload)}")
+        logger.debug(f"Set wizard rules payload: {sanitize_for_log(payload)}")
 
         # Make the request
         response = make_authenticated_request(
@@ -465,7 +485,8 @@ class FlowPokerDrillCreator:
             # Log response data for debugging
             try:
                 response_data = response.json()
-                logger.debug(f"Set wizard rules response: {json.dumps(response_data)}")
+                if logger.level <= logging.DEBUG:
+                    logger.debug(f"Set wizard rules response: {sanitize_for_log(response_data)}")
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 

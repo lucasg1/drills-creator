@@ -96,7 +96,7 @@ class BatchVisualizer:
         }
 
         # Define the suits we can use
-        suits = ['h', 's', 'd', 'c']
+        suits = ["h", "s", "d", "c"]
 
         # Handle pairs (e.g., 22, AA)
         if len(hand) == 2 and hand[0] == hand[1]:
@@ -157,6 +157,84 @@ class BatchVisualizer:
             filtered_files.append(file_path)
 
         return filtered_files
+
+    def create_metadata_csv(
+        self, game_type, depth, street, action_seq, position, output_dir
+    ):
+        """
+        Create a CSV file with metadata information for the current folder
+
+        Parameters:
+        game_type (str): The game type (e.g., MTTGeneral_ICM8m200PT)
+        depth (str): The stack depth
+        street (str): The street
+        action_seq (str): The action sequence
+        position (str): The position
+        output_dir (Path): The output directory
+        """
+        try:
+            logger.info(
+                f"Creating metadata CSV for: game_type={game_type}, depth={depth}, position={position}"
+            )
+
+            # Extract mode (icm or chipev)
+            mode = "icm" if "ICM" in game_type.upper() else "chipev"
+
+            # Extract field size (200 or 1000)
+            field_size = 1000
+            if "200" in game_type:
+                field_size = 200
+
+            # Extract field left
+            field_left = "100%"  # Default
+            if "START" in game_type:
+                field_left = "100%"
+            elif "PCT75" in game_type:
+                field_left = "75%"
+            elif "PCT50" in game_type:
+                field_left = "50%"
+            elif "PCT37" in game_type:
+                field_left = "37%"
+            elif "PCT25" in game_type:
+                field_left = "25%"
+            elif "BUBBLE" in game_type:
+                field_left = "bubble"
+            elif "3TL" in game_type:
+                field_left = "3 tables left"
+            elif "2TL" in game_type:
+                field_left = "2 tables left"
+            elif "FT" in game_type:
+                field_left = "final table"
+
+            # Process position (utg, utg+1, mp, hj, lj, co, btn, sb, bb)
+            pos = position.lower()
+
+            # Process action (default is "rfi")
+            action = "rfi"
+            if "pf_" in action_seq.lower():
+                action = "rfi"
+            # Add more action type detections as needed
+
+            # Log the extracted values
+            logger.info(
+                f"Extracted values: mode={mode}, field_size={field_size}, field_left={field_left}, position={pos}, depth={depth}, action={action}"
+            )
+
+            # Create CSV file
+            csv_path = output_dir / "metadata.csv"
+            logger.info(f"Writing metadata to: {csv_path}")
+
+            with open(csv_path, "w") as f:
+                # Write header row
+                f.write("mode,field_size,field_left,position,stack_depth,action\n")
+
+                # Write data row
+                f.write(f"{mode},{field_size},{field_left},{pos},{depth},{action}\n")
+
+            logger.info(f"Created metadata CSV file at {csv_path}")
+
+        except Exception as e:
+            logger.error(f"Error creating metadata CSV: {e}", exc_info=True)
 
     def process_solution_file(self, file_path):
         """Process a single solution file"""
@@ -261,7 +339,9 @@ class BatchVisualizer:
                     scores = {c: s * factor for c, s in scores.items()}
                 elif max_score == 0 and action_codes:
                     best = row["best_action"]
-                    scores = {f"{c}_score": (10 if c == best else 0) for c in action_codes}
+                    scores = {
+                        f"{c}_score": (10 if c == best else 0) for c in action_codes
+                    }
                 return pd.Series(scores)
 
             score_df = filtered_df.apply(compute_scores, axis=1)
@@ -279,13 +359,20 @@ class BatchVisualizer:
             # Create the result dataframe with all strategies and EVs
             result_df = filtered_df[result_columns].copy()
 
-
             # Save filtered results to CSV
-            csv_filename = output_subdir / f"hardest_{self.num_hands}_hands.csv"
+            csv_filename = output_subdir / f"actions.csv"
             result_df.to_csv(csv_filename, index=False)
 
             # Create visualizations for each hand
             scenario_name = f"{game_type}_{depth}_{street}_{action_seq}_{position}"
+
+            try:
+                self.create_metadata_csv(
+                    game_type, depth, street, action_seq, position, output_subdir
+                )
+                logger.info(f"Successfully created metadata CSV")
+            except Exception as e:
+                logger.error(f"Failed to create metadata CSV: {e}", exc_info=True)
 
             # Process each hand
             for i, row in result_df.iterrows():
@@ -322,9 +409,7 @@ class BatchVisualizer:
                 f.write(f"Total hands: {len(df_solutions)}\n")
                 f.write(f"Filtered hands: {len(filtered_df)}\n")
                 if self.min_threshold is not None or self.max_threshold is not None:
-                    f.write(
-                        f"EV range: {self.min_threshold} to {self.max_threshold}\n"
-                    )
+                    f.write(f"EV range: {self.min_threshold} to {self.max_threshold}\n")
                 f.write(f"Top {self.num_hands} hardest hands\n\n")
 
                 f.write("Hands by action:\n")
