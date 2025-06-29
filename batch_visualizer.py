@@ -8,6 +8,7 @@ from clear_spot_solution_json import clear_spot_solution_json
 from poker_table_visualizer import PokerTableVisualizer
 import logging
 import random
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Set up logging
 logging.basicConfig(
@@ -21,6 +22,65 @@ logger = logging.getLogger(__name__)
 FULL_SCORE_THRESHOLD = 30.0  # percent
 
 
+def create_single_visualization(args):
+    """Create a single visualization - standalone function for multiprocessing"""
+    row_data, clean_json, output_subdir, file_path, hand_to_cards_map = args
+    i, row = row_data
+    hand = row["hand"]
+    action = row["best_action"]
+    ev = row["best_ev"]
+
+    # Convert hand notation to card notation using the provided mapping
+    if hand in hand_to_cards_map:
+        card1, card2 = hand_to_cards_map[hand]
+    else:
+        # Fallback conversion if not in cache
+        rank_map = {
+            "A": "A",
+            "K": "K",
+            "Q": "Q",
+            "J": "J",
+            "T": "T",
+            "9": "9",
+            "8": "8",
+            "7": "7",
+            "6": "6",
+            "5": "5",
+            "4": "4",
+            "3": "3",
+            "2": "2",
+        }
+        suits = ["h", "s", "d", "c"]
+
+        if len(hand) == 2 and hand[0] == hand[1]:
+            rank = rank_map[hand[0]]
+            suit1, suit2 = random.sample(suits, 2)
+            card1, card2 = f"{rank}{suit1}", f"{rank}{suit2}"
+        elif len(hand) == 3 and hand[2] == "s":
+            rank1, rank2 = rank_map[hand[0]], rank_map[hand[1]]
+            suit = random.choice(suits)
+            card1, card2 = f"{rank1}{suit}", f"{rank2}{suit}"
+        else:
+            rank1, rank2 = rank_map[hand[0]], rank_map[hand[1]]
+            suit1, suit2 = random.sample(suits, 2)
+            card1, card2 = f"{rank1}{suit1}", f"{rank2}{suit2}"
+
+    # Create output path
+    output_path = output_subdir / f"{hand}_{action}_{ev:.6f}.png"
+
+    # Create visualization
+    visualizer = PokerTableVisualizer(
+        clean_json,
+        card1,
+        card2,
+        str(output_path),
+        solution_path=str(file_path),
+    )
+    visualizer.create_visualization()
+
+    return f"Created visualization for {hand} ({card1}, {card2}) - Best action: {action}, EV: {ev:.6f}"
+
+
 class BatchVisualizer:
     def __init__(
         self,
@@ -28,10 +88,11 @@ class BatchVisualizer:
         output_dir="visualizations",
         min_threshold=None,
         max_threshold=None,
-        num_hands=20,
+        num_hands=169,
         game_type=None,
         depth=None,
         position=None,
+        exclude_poor_actions=False,
     ):
         """
         Initialize the batch visualizer
@@ -45,6 +106,7 @@ class BatchVisualizer:
         depth (str, optional): Filter by specific stack depth
         position (str, optional): Filter by specific position
         num_hands (int, optional): Number of hardest hands to extract per file
+        exclude_poor_actions (bool, optional): Exclude hands where all non-fold actions have EV < -0.03
         Each hand will also include a score per action from 0-10 reflecting
         how often that action should be chosen.
         """
@@ -56,6 +118,7 @@ class BatchVisualizer:
         self.game_type = game_type
         self.depth = depth
         self.position = position
+        self.exclude_poor_actions = exclude_poor_actions
 
         # Create output directory
         os.makedirs(self.output_dir, exist_ok=True)
@@ -284,6 +347,27 @@ class BatchVisualizer:
                 filtered_df = filtered_df[filtered_df["best_ev"] >= self.min_threshold]
             if self.max_threshold is not None:
                 filtered_df = filtered_df[filtered_df["best_ev"] <= self.max_threshold]
+
+            # Filter out hands where all non-fold actions have EV < -0.03
+            if self.exclude_poor_actions:
+
+                def has_viable_non_fold_action(row):
+                    non_fold_evs = [
+                        row[f"{code}_ev"]
+                        for code in action_codes
+                        if code != "F" and f"{code}_ev" in row
+                    ]
+
+                    return (
+                        any(ev >= -0.03 for ev in non_fold_evs)
+                        if non_fold_evs
+                        else True
+                    )
+
+                filtered_df = filtered_df[
+                    filtered_df.apply(has_viable_non_fold_action, axis=1)
+                ]
+
             filtered_df = filtered_df.copy()
 
             # Update stats
@@ -374,31 +458,39 @@ class BatchVisualizer:
             except Exception as e:
                 logger.error(f"Failed to create metadata CSV: {e}", exc_info=True)
 
-            # Process each hand
-            for i, row in result_df.iterrows():
-                hand = row["hand"]
-                action = row["best_action"]
-                ev = row["best_ev"]
+            # Process each hand in parallel
+            # Use ProcessPoolExecutor for parallel processing
+            with ProcessPoolExecutor() as executor:
+                # Prepare arguments for each visualization task
+                visualization_args = [
+                    (
+                        (i, row),
+                        clean_json,
+                        output_subdir,
+                        file_path,
+                        self.hand_to_cards_map,
+                    )
+                    for i, row in result_df.iterrows()
+                ]
 
-                # Convert hand notation to card notation
-                card1, card2 = self.hand_to_cards(hand)
+                # Submit all visualization tasks
+                future_to_hand = {
+                    executor.submit(create_single_visualization, args): args[0]
+                    for args in visualization_args
+                }
 
-                # Create output path
-                output_path = output_subdir / f"{hand}_{action}_{ev:.6f}.png"
-
-                # Create visualization
-                visualizer = PokerTableVisualizer(
-                    clean_json,
-                    card1,
-                    card2,
-                    str(output_path),
-                    solution_path=str(file_path),
-                )
-                visualizer.create_visualization()
-
-                logger.info(
-                    f"Created visualization for {hand} ({card1}, {card2}) - Best action: {action}, EV: {ev:.6f}"
-                )
+                # Process completed tasks as they finish
+                for future in as_completed(future_to_hand):
+                    try:
+                        result_message = future.result()
+                        logger.info(result_message)
+                    except Exception as e:
+                        i, row = future_to_hand[future]
+                        hand = row["hand"]
+                        logger.error(
+                            f"Error creating visualization for {hand}: {e}",
+                            exc_info=True,
+                        )
 
             # Update stats
             self.stats["processed_files"] += 1
@@ -473,12 +565,17 @@ def main():
     parser.add_argument(
         "--num-hands",
         type=int,
-        default=20,
+        default=169,
         help="Number of hardest hands to extract per solution file",
     )
     parser.add_argument("--game-type", help="Filter by game type")
     parser.add_argument("--depth", help="Filter by stack depth")
     parser.add_argument("--position", help="Filter by position")
+    parser.add_argument(
+        "--exclude-poor-actions",
+        action="store_true",
+        help="Exclude hands where all non-fold actions have EV < -0.03",
+    )
 
     args = parser.parse_args()
 
@@ -492,6 +589,7 @@ def main():
         game_type=args.game_type,
         depth=args.depth,
         position=args.position,
+        exclude_poor_actions=args.exclude_poor_actions,
     )
 
     visualizer.run()

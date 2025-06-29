@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict, Any, Optional, Union
 from flow_auth import make_authenticated_request, initialize_session
 
+
 # Helper function to sanitize JSON for logging
 def sanitize_for_log(obj, max_length=50):
     """Sanitize a JSON object for logging by truncating long strings"""
@@ -19,6 +20,7 @@ def sanitize_for_log(obj, max_length=50):
         return obj[:max_length] + "..."
     else:
         return obj
+
 
 # Set up logging
 logging.basicConfig(
@@ -325,7 +327,9 @@ class FlowPokerDrillCreator:
                 response_data = response.json()
                 # Only log detailed response in debug mode
                 if logger.level <= logging.DEBUG:
-                    logger.debug(f"Score answer response: {sanitize_for_log(response_data)}")
+                    logger.debug(
+                        f"Score answer response: {sanitize_for_log(response_data)}"
+                    )
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 
@@ -421,7 +425,9 @@ class FlowPokerDrillCreator:
             try:
                 response_data = response.json()
                 if logger.level <= logging.DEBUG:
-                    logger.debug(f"Promote drill response: {sanitize_for_log(response_data)}")
+                    logger.debug(
+                        f"Promote drill response: {sanitize_for_log(response_data)}"
+                    )
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 
@@ -486,7 +492,9 @@ class FlowPokerDrillCreator:
             try:
                 response_data = response.json()
                 if logger.level <= logging.DEBUG:
-                    logger.debug(f"Set wizard rules response: {sanitize_for_log(response_data)}")
+                    logger.debug(
+                        f"Set wizard rules response: {sanitize_for_log(response_data)}"
+                    )
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 
