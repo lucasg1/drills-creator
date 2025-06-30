@@ -23,6 +23,18 @@ class ChipDrawer:
         self.img = img
         self.draw = draw
 
+    def _draw_text_with_background(self, text, x, y, font, padding=4, radius=4, fill=(255, 255, 255, 255), bg=(0, 0, 0, 180)):
+        """Draw text with a rounded rectangle background."""
+        text_width = self.draw.textlength(text, font=font)
+        text_height = font.getbbox(text)[3]
+        bbox = [x - padding, y - padding, x + text_width + padding, y + text_height + padding]
+        overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay, "RGBA")
+        overlay_draw.rounded_rectangle(bbox, radius=radius, fill=bg)
+        self.img = Image.alpha_composite(self.img, overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+        self.draw.text((x, y), text, fill=fill, font=font)
+
     def set_fonts(self, title_font, player_font, card_font):
         """Set the fonts for drawing text."""
         self.title_font = title_font
@@ -249,14 +261,16 @@ class ChipDrawer:
                 f"{chips:.1f} BB" if chips < 10 else f"{chips:.0f} BB"
             )
             text_y = chip_y - (len(stack) - 1) * stack_spacing / 2 - self.player_font.getbbox(chip_text)[3] / 2
-            self.draw.text(
-                (
-                    chip_x + 15 * scale_factor + 5 * scale_factor,
-                    text_y,
-                ),
+            text_x = chip_x + 15 * scale_factor + 5 * scale_factor
+            self._draw_text_with_background(
                 chip_text,
-                fill=text_color,
+                text_x,
+                text_y,
                 font=self.player_font,
+                padding=4 * scale_factor,
+                radius=4 * scale_factor,
+                fill=text_color,
+                bg=(0, 0, 0, 180),
             )
 
         return self.img, self.draw

@@ -24,6 +24,44 @@ class TableDrawer:
         self.img = img
         self.draw = draw
 
+    def _draw_text_with_background(self, text, x, y, font, padding=4, radius=4, fill=(255, 255, 255, 255), bg=(0, 0, 0, 180)):
+        """Draw text with a rounded rectangle background.
+
+        Parameters
+        ----------
+        text: str
+            Text to draw.
+        x, y: int
+            Top-left coordinates where the text should be drawn.
+        font: ImageFont
+            Font used for the text.
+        padding: int
+            Padding around the text inside the rectangle.
+        radius: int
+            Radius for the rounded rectangle corners.
+        fill: tuple
+            Text color.
+        bg: tuple
+            Background color (RGBA).
+        """
+        text_width = self.draw.textlength(text, font=font)
+        text_height = font.getbbox(text)[3]
+
+        bbox = [
+            x - padding,
+            y - padding,
+            x + text_width + padding,
+            y + text_height + padding,
+        ]
+
+        overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay, "RGBA")
+        overlay_draw.rounded_rectangle(bbox, radius=radius, fill=bg)
+
+        self.img = Image.alpha_composite(self.img, overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+        self.draw.text((x, y), text, fill=fill, font=font)
+
     def draw_table(self):
         """Draw the poker table with a simple 3D effect."""
         # Get dimensions from config
@@ -247,22 +285,32 @@ class TableDrawer:
         scenario_width = self.draw.textlength(scenario_text, font=self.player_font)
         scenario_height = self.title_font.getbbox(scenario_text)[3]
         scenario_y = table_center_y - logo_height / 4 - scenario_height - 10
-        self.draw.text(
-            (table_center_x - scenario_width / 2, scenario_y),
+        scenario_x = table_center_x - scenario_width / 2
+        self._draw_text_with_background(
             scenario_text,
-            fill=text_color,
+            scenario_x,
+            scenario_y,
             font=self.player_font,
+            padding=4 * scale_factor,
+            radius=4 * scale_factor,
+            fill=text_color,
+            bg=(0, 0, 0, 180),
         )
 
         # Draw the pot below the logo
         pot_text = f"Pot: {self.game_data.pot} BB"
         pot_width = self.draw.textlength(pot_text, font=self.player_font)
         pot_y = table_center_y + logo_height / 4 + 15
-        self.draw.text(
-            (table_center_x - pot_width / 2, pot_y),
+        pot_x = table_center_x - pot_width / 2
+        self._draw_text_with_background(
             pot_text,
-            fill=text_color,
+            pot_x,
+            pot_y,
             font=self.player_font,
+            padding=4 * scale_factor,
+            radius=4 * scale_factor,
+            fill=text_color,
+            bg=(0, 0, 0, 180),
         )
 
         return self.img, self.draw
