@@ -24,9 +24,22 @@ class TableDrawer:
         self.img = img
         self.draw = draw
 
-    def _draw_text_with_background(self, text, x, y, font, padding=4, radius=None, fill=None, bg=None):
+    def _draw_text_with_background(
+        self,
+        text,
+        x,
+        y,
+        font,
+        padding=4,
+        radius=None,
+        fill=None,
+        bg=None,
+        blur=2,
+    ):
         """Draw text with a rounded rectangle background.
 
+        A bit of blur softens the rectangle so it blends with the table.
+        
         Parameters
         ----------
         text: str
@@ -43,6 +56,8 @@ class TableDrawer:
             Text color.
         bg: tuple
             Background color (RGBA).
+        blur: int
+            Radius for the background blur to create soft edges.
         """
         if fill is None:
             fill = self.config.text_color
@@ -60,9 +75,13 @@ class TableDrawer:
             y + text_height + padding,
         ]
 
-        overlay = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
         overlay_draw = ImageDraw.Draw(overlay, "RGBA")
         overlay_draw.rounded_rectangle(bbox, radius=radius, fill=bg)
+        if blur:
+            overlay = overlay.filter(ImageFilter.GaussianBlur(radius=blur))
 
         self.img = Image.alpha_composite(self.img, overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
