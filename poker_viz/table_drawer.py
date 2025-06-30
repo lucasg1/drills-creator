@@ -24,7 +24,7 @@ class TableDrawer:
         self.img = img
         self.draw = draw
 
-    def _draw_text_with_background(self, text, x, y, font, padding=4, radius=4, fill=(255, 255, 255, 255), bg=(0, 0, 0, 180)):
+    def _draw_text_with_background(self, text, x, y, font, padding=4, radius=None, fill=None, bg=None):
         """Draw text with a rounded rectangle background.
 
         Parameters
@@ -44,8 +44,14 @@ class TableDrawer:
         bg: tuple
             Background color (RGBA).
         """
+        if fill is None:
+            fill = self.config.text_color
+        if bg is None:
+            bg = self.config.text_bg_color
         text_width = self.draw.textlength(text, font=font)
         text_height = font.getbbox(text)[3]
+        if radius is None:
+            radius = (text_height + padding * 2) // 2
 
         bbox = [
             x - padding,
@@ -292,9 +298,7 @@ class TableDrawer:
             scenario_y,
             font=self.player_font,
             padding=4 * scale_factor,
-            radius=4 * scale_factor,
             fill=text_color,
-            bg=(0, 0, 0, 180),
         )
 
         # Draw the pot below the logo
@@ -308,9 +312,7 @@ class TableDrawer:
             pot_y,
             font=self.player_font,
             padding=4 * scale_factor,
-            radius=4 * scale_factor,
             fill=text_color,
-            bg=(0, 0, 0, 180),
         )
 
         return self.img, self.draw

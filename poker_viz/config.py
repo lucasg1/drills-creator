@@ -37,6 +37,8 @@ class PokerTableConfig:
         self.table_color = (53, 101, 77, 255)  # Green table
         self.background_color = (30, 30, 30, 255)  # Dark background
         self.text_color = (255, 255, 255, 255)  # White text
+        # Default background for text labels (subtle black)
+        self.text_bg_color = (0, 0, 0, 150)
         self.player_color = (100, 100, 100, 255)  # Light gray player circles
         self.active_player_color = (80, 80, 160, 255)  # Blue for active player
         self.hero_player_color = (80, 160, 80, 255)  # Green for hero
