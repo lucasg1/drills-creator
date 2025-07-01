@@ -9,8 +9,8 @@ from PIL import ImageFont
 class PokerTableConfig:
     def __init__(self, scale_factor=2, num_players=8):
         # Image dimensions - base dimensions
-        self.base_width = 1200
-        self.base_height = 800
+        self.base_width = 1432
+        self.base_height = 849
 
         # Scale factor for high-res rendering
         self.scale_factor = scale_factor
@@ -24,10 +24,10 @@ class PokerTableConfig:
 
         # Table dimensions
         self.table_center_x = self.width // 2
-        self.table_center_y = self.height // 2
-        self.table_width = int(self.width * 0.85)  # Wider table
+        self.table_center_y = int(self.height * 0.44)  # Shifted upwards to create more space at bottom
+        self.table_width = int(self.width * 0.80)  # Wider table
         self.table_height = int(
-            self.height * 0.5
+            self.height * 0.45
         )  # Less tall to make it more elongated
 
         # Player dimensions - adjusted for higher resolution
@@ -37,8 +37,10 @@ class PokerTableConfig:
         self.table_color = (53, 101, 77, 255)  # Green table
         self.background_color = (30, 30, 30, 255)  # Dark background
         self.text_color = (255, 255, 255, 255)  # White text
+        # Golden color for scenario text
+        self.scenario_text_color = (255, 215, 0, 255)  # RGB for gold with full opacity
         # Default background for text labels (subtle black with some transparency)
-        self.text_bg_color = (0, 0, 0, 120)
+        self.text_bg_color = (0, 0, 0, 50)
         self.player_color = (100, 100, 100, 255)  # Light gray player circles
         self.active_player_color = (80, 80, 160, 255)  # Blue for active player
         self.hero_player_color = (80, 160, 80, 255)  # Green for hero

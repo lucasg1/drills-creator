@@ -47,7 +47,7 @@ class ChipDrawer:
         text_height = font.getbbox(text)[3]
         if radius is None:
             radius = (text_height + padding * 2) // 2
-        bbox = [x - padding, y - padding, x + text_width + padding, y + text_height + padding]
+        bbox = [x - padding - 10, y - padding, x + text_width + padding + 10, y + text_height + padding]
         overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
@@ -256,7 +256,7 @@ class ChipDrawer:
                 5: {},
                 6: {},
                 7: {},
-                8: {0: 0.6, 1: 0.4, 2: 0.2, 3: 0.3, 4: 0.3, 5: 0.5, 6: 0.3, 7: 0.5},
+                8: {0: 0.6, 1: 0.3, 2: 0.2, 3: 0.3, 4: 0.3, 5: 0.5, 6: 0.3, 7: 0.5},
                 9: {},
             }
 
@@ -285,7 +285,7 @@ class ChipDrawer:
                 f"{chips:.1f} BB" if chips < 10 else f"{chips:.0f} BB"
             )
             text_y = chip_y - (len(stack) - 1) * stack_spacing / 2 - self.player_font.getbbox(chip_text)[3] / 2
-            text_x = chip_x + 15 * scale_factor + 5 * scale_factor
+            text_x = chip_x + 15 * scale_factor + 5 * scale_factor + 15
             self._draw_text_with_background(
                 chip_text,
                 text_x,

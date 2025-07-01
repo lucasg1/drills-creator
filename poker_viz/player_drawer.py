@@ -2,6 +2,7 @@
 Module for drawing players and player-related elements.
 """
 
+import os
 from PIL import Image, ImageDraw, ImageFilter
 
 
@@ -22,6 +23,7 @@ class PlayerDrawer:
         self.game_data = game_data
         self.img = img
         self.draw = draw
+        self._avatar_cache = None  # Cache for the avatar image
 
     def set_fonts(self, title_font, player_font, card_font):
         """Set the fonts for drawing text."""
@@ -243,6 +245,9 @@ class PlayerDrawer:
         # Overlay the player circle on the main image
         self.img = Image.alpha_composite(self.img, circle_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+
+        # Draw avatar inside the circle
+        self._draw_avatar_in_circle(x, y, radius)
 
         # Draw border with anti-aliasing
         border_mask = Image.new("L", (self.config.width, self.config.height), 0)
@@ -550,3 +555,80 @@ class PlayerDrawer:
             seat_index = 0
 
         return self.config.seat_positions[seat_index]
+
+    def _load_avatar_image(self):
+        """Load and cache the avatar image."""
+        if self._avatar_cache is None:
+            avatar_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "avatar.png"
+            )
+            if os.path.exists(avatar_path):
+                try:
+                    self._avatar_cache = Image.open(avatar_path).convert("RGBA")
+                except Exception as e:
+                    print(f"Warning: Could not load avatar image: {e}")
+                    self._avatar_cache = (
+                        False  # Mark as failed to avoid repeated attempts
+                    )
+            else:
+                print(f"Warning: Avatar image not found at {avatar_path}")
+                self._avatar_cache = False
+        return self._avatar_cache if self._avatar_cache else None
+
+    def _draw_avatar_in_circle(self, x, y, radius):
+        """Draw the avatar image inside the circle with proper masking."""
+        avatar_img = self._load_avatar_image()
+        if not avatar_img:
+            return
+
+        scale_factor = self.config.scale_factor
+
+        # Calculate avatar size (slightly smaller than circle to leave some padding)
+        avatar_radius = radius * 0.85
+        avatar_size = int(avatar_radius * 2)
+
+        # Resize avatar to fit the circle
+        avatar_resized = avatar_img.resize(
+            (avatar_size, avatar_size), Image.Resampling.LANCZOS
+        )
+
+        # Create a circular mask for the avatar
+        avatar_mask = Image.new("L", (avatar_size, avatar_size), 0)
+        avatar_mask_draw = ImageDraw.Draw(avatar_mask)
+        avatar_mask_draw.ellipse([0, 0, avatar_size, avatar_size], fill=255)
+
+        # Apply slight blur for smoother edges
+        avatar_mask = avatar_mask.filter(
+            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
+        )
+
+        # Create avatar overlay
+        avatar_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+
+        # Calculate position to center the avatar
+        avatar_x = int(x - avatar_radius)
+        avatar_y = int(y - avatar_radius - 35)
+
+        # Apply the circular mask to the avatar
+        avatar_masked = Image.new("RGBA", (avatar_size, avatar_size), (0, 0, 0, 0))
+        for py in range(avatar_size):
+            for px in range(avatar_size):
+                mask_value = avatar_mask.getpixel((px, py))
+                if mask_value > 0:
+                    avatar_pixel = avatar_resized.getpixel((px, py))
+                    # Apply mask to alpha channel
+                    alpha = int(
+                        (avatar_pixel[3] if len(avatar_pixel) == 4 else 255)
+                        * mask_value
+                        / 255
+                    )
+                    avatar_masked.putpixel((px, py), (*avatar_pixel[:3], alpha))
+
+        # Paste the masked avatar onto the overlay
+        avatar_overlay.paste(avatar_masked, (avatar_x, avatar_y), avatar_masked)
+
+        # Composite the avatar overlay onto the main image
+        self.img = Image.alpha_composite(self.img, avatar_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object

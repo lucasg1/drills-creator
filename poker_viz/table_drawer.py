@@ -39,7 +39,7 @@ class TableDrawer:
         """Draw text with a rounded rectangle background.
 
         A bit of blur softens the rectangle so it blends with the table.
-        
+
         Parameters
         ----------
         text: str
@@ -69,9 +69,9 @@ class TableDrawer:
             radius = (text_height + padding * 2) // 2
 
         bbox = [
-            x - padding,
+            x - padding - 10,
             y - padding,
-            x + text_width + padding,
+            x + text_width + padding + 10,
             y + text_height + padding,
         ]
 
@@ -97,6 +97,7 @@ class TableDrawer:
         scale_factor = self.config.scale_factor
         table_color = self.config.table_color
         text_color = self.config.text_color
+        scenario_text_color = self.config.scenario_text_color
 
         # ------------------------------------------------------------------
         # Background
@@ -309,7 +310,7 @@ class TableDrawer:
         scenario_text = self.game_data.get_scenario_description()
         scenario_width = self.draw.textlength(scenario_text, font=self.player_font)
         scenario_height = self.title_font.getbbox(scenario_text)[3]
-        scenario_y = table_center_y - logo_height / 4 - scenario_height - 10
+        scenario_y = table_center_y - logo_height / 4 - scenario_height - 25
         scenario_x = table_center_x - scenario_width / 2
         self._draw_text_with_background(
             scenario_text,
@@ -317,13 +318,13 @@ class TableDrawer:
             scenario_y,
             font=self.player_font,
             padding=4 * scale_factor,
-            fill=text_color,
+            fill=scenario_text_color,
         )
 
         # Draw the pot below the logo
         pot_text = f"Pot: {self.game_data.pot} BB"
         pot_width = self.draw.textlength(pot_text, font=self.player_font)
-        pot_y = table_center_y + logo_height / 4 + 15
+        pot_y = table_center_y + logo_height / 4 + 30
         pot_x = table_center_x - pot_width / 2
         self._draw_text_with_background(
             pot_text,
