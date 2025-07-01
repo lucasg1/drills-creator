@@ -450,7 +450,7 @@ class FlowPokerDrillCreator:
                 logger.error(f"Response: {response.text}")
             raise Exception(f"Failed to promote drill: {status_code} - {error_msg}")
 
-    def set_wizard_rules(self, amount: int = 1) -> bool:
+    def set_wizard_rules(self, amount: int = 20) -> bool:
         """
         Set the wizard rules for the drill. This is required before promotion.
 
@@ -470,7 +470,7 @@ class FlowPokerDrillCreator:
         # Create the rule payload
         payload = {
             "id": self.drill_id,
-            "amount": amount,
+            "amount": 20,
             "tags": tags,
             "validation": f"Total de questões com essa(s) tag(s): {amount}",
             "valid": True,

@@ -47,8 +47,7 @@ class PlayerDrawer:
             elif position in position_to_seat:
                 seat_index = position_to_seat[position]
             else:
-                # Fallback for unknown positions
-                seat_index = 8  # Default to bottom left
+                print("ERRO: Unknown player position:", position)
 
             # Get the position coordinates safely
             x, y = self._get_safe_seat_position(seat_index)
@@ -84,9 +83,7 @@ class PlayerDrawer:
         position_to_seat = self.game_data.get_position_mapping()
 
         # Store player info for later use in draw_player_rectangles
-        self.player_positions = []
-
-        # Draw each player's background circle
+        self.player_positions = []        # Draw each player's background circle
         for player in self.game_data.players:
             position = player.get("position")
             is_hero = player.get("is_hero", False)
@@ -441,6 +438,17 @@ class PlayerDrawer:
         # Custom offsets so the button does not overlap with chips
         # --------------------------------------------------------------
         offset_maps = {
+            9: {
+                0: (1.4, -1.8),
+                1: (1.1, -1.4),
+                2: (0.8, 0.7),
+                3: (0.8, 0.7),
+                4: (0.8, 0.9),
+                5: (0.8, 0.7),
+                6: (-0.8, 0.7),
+                7: (-0.8, 0.7),
+                8: (-1.3, -1.4),
+            },
             8: {
                 0: (1.4, -1.8),
                 1: (1.1, -1.4),
@@ -450,7 +458,7 @@ class PlayerDrawer:
                 5: (0.8, 0.7),
                 6: (-0.8, 0.7),
                 7: (-1.3, -1.4),
-            }
+            },
         }
         offsets = offset_maps.get(self.config.num_players, {})
         dx_factor, dy_factor = offsets.get(seat_index, (0.7, -0.7))

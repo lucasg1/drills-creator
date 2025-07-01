@@ -55,12 +55,7 @@ class PokerTableConfig:
         self._init_seat_positions(self.num_players)
 
     def _init_seat_positions(self, num_players=8):
-        """Initialize seat positions around the table.
 
-        Args:
-            num_players: Number of players at the table (supports 6, 8, 9, or 10 players)
-        """
-        # Ensure num_players is valid, default to 8 if not
         if num_players not in [2, 3, 4, 5, 6, 7, 8, 9]:
             print(
                 f"Warning: Unsupported player count ({num_players}), defaulting to 8 players"

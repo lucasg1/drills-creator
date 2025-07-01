@@ -719,15 +719,15 @@ def process_scenario(
     if field_left and field_left.lower() == "final table":
         field_info = "Final Table"
     elif field_left and field_left.lower() == "3 tables":
-        field_info = "3 Tables"
+        field_info = "3 Tables Left"
     elif field_left and field_left.lower() == "2 tables":
-        field_info = "2 Tables"
+        field_info = "2 Tables Left"
     else:
         # For numeric values, maintain the percentage format
         field_info = f"{field_left}% Field Left"
 
     name = f"{mode} | {position} | {action_type} | {stack_depth} BBs | {field_info}"
-    description = f"Nesse treino você irá aprender o range de RFI para o {position} em uma profundidade de {stack_depth} BBs."
+    description = f"Nesse treino, você irá aprender o range de RFI para o {position}, com {stack_depth} BBs de profundidade, no cenário de {field_info}."
 
     try:
         # Step 1: Create the drill
@@ -865,7 +865,7 @@ def process_scenario(
                         success = True
                         successful_scores += 1
                         # Wait a bit to avoid overwhelming the server
-                        time.sleep(1)
+                        time.sleep(2)
                         break
                     except Exception as e:
                         error_msg = str(e)
