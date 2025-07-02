@@ -83,7 +83,7 @@ class PlayerDrawer:
         position_to_seat = self.game_data.get_position_mapping()
 
         # Store player info for later use in draw_player_rectangles
-        self.player_positions = []        # Draw each player's background circle
+        self.player_positions = []  # Draw each player's background circle
         for player in self.game_data.players:
             position = player.get("position")
             is_hero = player.get("is_hero", False)
@@ -412,6 +412,7 @@ class PlayerDrawer:
 
         # Draw player stack
         stack = float(player.get("current_stack", 0))
+        stack = round(stack, 2)
         stack_text = f"{stack:.1f} BB"
         stack_width = self.draw.textlength(stack_text, font=self.player_font)
 

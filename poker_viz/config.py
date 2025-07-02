@@ -27,7 +27,7 @@ class PokerTableConfig:
         self.table_center_y = int(self.height * 0.44)  # Shifted upwards to create more space at bottom
         self.table_width = int(self.width * 0.80)  # Wider table
         self.table_height = int(
-            self.height * 0.45
+            self.height * 0.5
         )  # Less tall to make it more elongated
 
         # Player dimensions - adjusted for higher resolution
@@ -89,7 +89,7 @@ class PokerTableConfig:
         )
         top_middle = (
             self.table_center_x,
-            self.table_center_y - self.table_height * 0.60,
+            self.table_center_y - self.table_height * 0.57,
         )
         top_right = (
             self.table_center_x + self.table_width * 0.3,

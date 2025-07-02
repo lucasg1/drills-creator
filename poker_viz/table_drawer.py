@@ -322,7 +322,7 @@ class TableDrawer:
         )
 
         # Draw the pot below the logo
-        pot_text = f"Total Pot: {self.game_data.pot} BB"
+        pot_text = f"Total Pot: {self.game_data.pot:.2f} BB"
         pot_width = self.draw.textlength(pot_text, font=self.player_font)
         pot_y = table_center_y + logo_height / 4 + 30
         pot_x = table_center_x - pot_width / 2
