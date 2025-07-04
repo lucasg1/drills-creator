@@ -325,11 +325,9 @@ class FlowPokerDrillCreator:
             # Log response data for debugging
             try:
                 response_data = response.json()
-                # Only log detailed response in debug mode
-                if logger.level <= logging.DEBUG:
-                    logger.debug(
-                        f"Score answer response: {sanitize_for_log(response_data)}"
-                    )
+                logger.debug(
+                    f"Score answer response: {sanitize_for_log(response_data)}"
+                )
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 

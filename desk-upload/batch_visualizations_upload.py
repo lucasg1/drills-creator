@@ -722,6 +722,8 @@ def process_scenario(
         field_info = "3 Tables Left"
     elif field_left and field_left.lower() == "2 tables":
         field_info = "2 Tables Left"
+    elif field_left and field_left.lower() == "bubble":
+        field_info = "Bolha do ITM"
     else:
         # For numeric values, maintain the percentage format
         field_info = f"{field_left}% Field Left"
@@ -865,7 +867,7 @@ def process_scenario(
                         success = True
                         successful_scores += 1
                         # Wait a bit to avoid overwhelming the server
-                        time.sleep(2)
+                        time.sleep(3)
                         break
                     except Exception as e:
                         error_msg = str(e)
@@ -890,7 +892,8 @@ def process_scenario(
                     logger.error(
                         f"Failed to score question after {max_retries} attempts"
                     )
-                    # Continue with next question anyway
+                    logger.error("Fatal error during question scoring. Stopping drill creation.")
+                    return
             except Exception as e:
                 logger.error(f"Failed to process question {i}: {str(e)}")
 
