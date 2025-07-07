@@ -48,7 +48,7 @@ class FlowPokerImageDeleter:
 
     def delete_question(self, question_id: int) -> DeletionResult:
         """
-        Delete a single question/image by ID
+        Delete a single question/image by ID with retry logic
 
         Args:
             question_id: The ID of the question to delete
@@ -57,43 +57,89 @@ class FlowPokerImageDeleter:
             DeletionResult object with deletion status
         """
         result = DeletionResult(question_id=question_id)
+        retry_delays = [120, 240]  # 2 minutes, then 4 minutes
 
-        try:
-            endpoint = f"resource/question/{question_id}"
-            logger.info(f"Attempting to delete question ID: {question_id}")
-
-            response = make_authenticated_request("DELETE", endpoint)
-
-            if response is None:
-                result.error = "Request failed - no response received"
-                logger.error(f"No response received for question ID {question_id}")
-                return result
-
-            result.status_code = response.status_code
-
-            if response.status_code == 200:
-                result.success = True
-                logger.info(f"Successfully deleted question ID: {question_id}")
-            elif response.status_code == 404:
-                result.error = "Question not found"
-                logger.warning(f"Question ID {question_id} not found (404)")
-            elif response.status_code == 403:
-                result.error = "Access forbidden - check authentication"
-                logger.error(f"Access forbidden for question ID {question_id} (403)")
-            elif response.status_code == 401:
-                result.error = "Unauthorized - authentication required"
-                logger.error(f"Unauthorized access for question ID {question_id} (401)")
-            else:
-                result.error = f"HTTP {response.status_code}: {response.text[:100]}"
-                logger.error(
-                    f"Failed to delete question ID {question_id}: {result.error}"
+        for attempt in range(3):  # Initial attempt + 2 retries
+            try:
+                endpoint = f"resource/question/{question_id}"
+                attempt_msg = f" (attempt {attempt + 1}/3)" if attempt > 0 else ""
+                logger.info(
+                    f"Attempting to delete question ID: {question_id}{attempt_msg}"
                 )
 
-        except Exception as e:
-            result.error = f"Unexpected error: {str(e)}"
-            logger.error(
-                f"Unexpected error deleting question ID {question_id}: {result.error}"
-            )
+                response = make_authenticated_request("DELETE", endpoint)
+
+                if response is None:
+                    result.error = "Request failed - no response received"
+                    logger.error(
+                        f"No response received for question ID {question_id}{attempt_msg}"
+                    )
+
+                    if attempt < 2:  # Still have retries left
+                        delay = retry_delays[attempt]
+                        logger.info(
+                            f"Will retry question ID {question_id} in {delay} seconds..."
+                        )
+                        time.sleep(delay)
+                        continue
+                    else:
+                        return result
+
+                result.status_code = response.status_code
+
+                if response.status_code == 200:
+                    result.success = True
+                    logger.info(
+                        f"Successfully deleted question ID: {question_id}{attempt_msg}"
+                    )
+                    return result
+                elif response.status_code == 404:
+                    result.error = "Question not found"
+                    logger.warning(f"Question ID {question_id} not found (404)")
+                    return result  # Don't retry for 404 errors
+                elif response.status_code == 403:
+                    result.error = "Access forbidden - check authentication"
+                    logger.error(
+                        f"Access forbidden for question ID {question_id} (403)"
+                    )
+                    return result  # Don't retry for 403 errors
+                elif response.status_code == 401:
+                    result.error = "Unauthorized - authentication required"
+                    logger.error(
+                        f"Unauthorized access for question ID {question_id} (401)"
+                    )
+                    return result  # Don't retry for 401 errors
+                else:
+                    result.error = f"HTTP {response.status_code}: {response.text[:100]}"
+                    logger.error(
+                        f"Failed to delete question ID {question_id}: {result.error}{attempt_msg}"
+                    )
+
+                    if attempt < 2:  # Still have retries left
+                        delay = retry_delays[attempt]
+                        logger.info(
+                            f"Will retry question ID {question_id} in {delay} seconds..."
+                        )
+                        time.sleep(delay)
+                        continue
+                    else:
+                        return result
+
+            except Exception as e:
+                result.error = f"Unexpected error: {str(e)}"
+                logger.error(
+                    f"Unexpected error deleting question ID {question_id}: {result.error}{attempt_msg}"
+                )
+
+                if attempt < 2:  # Still have retries left
+                    delay = retry_delays[attempt]
+                    logger.info(
+                        f"Will retry question ID {question_id} in {delay} seconds..."
+                    )
+                    time.sleep(delay)
+                    continue
+                else:
+                    return result
 
         return result
 
@@ -244,7 +290,7 @@ class FlowPokerImageDeleter:
         self, start_id: int, end_id: int, delay: float = 1.0
     ) -> List[DeletionResult]:
         """
-        Delete a range of questions
+        Delete a range of questions with retry logic
 
         Args:
             start_id: Starting question ID
@@ -267,6 +313,30 @@ class FlowPokerImageDeleter:
 
             logger.info(f"Progress: {i}/{total_questions} deletions attempted")
 
+            # If deletion failed after all retries with critical errors, stop processing
+            # But continue for already deleted images (404) and permission errors
+            if not result.success and result.error:
+                if "Unexpected error" in result.error:
+                    logger.error(
+                        f"Stopping deletion process due to repeated failures with question ID {question_id}"
+                    )
+                    logger.error(f"Processed {i} out of {total_questions} questions")
+                    break
+                elif "Question not found" in result.error:
+                    logger.info(
+                        f"Question ID {question_id} was already deleted, continuing to next..."
+                    )
+                elif (
+                    "Access forbidden" in result.error or "Unauthorized" in result.error
+                ):
+                    logger.warning(
+                        f"Permission denied for question ID {question_id}, continuing to next..."
+                    )
+                else:
+                    logger.warning(
+                        f"Other error for question ID {question_id}: {result.error}, continuing to next..."
+                    )
+
             # Add delay between deletions to avoid overwhelming the server
             if i < total_questions and delay > 0:
                 time.sleep(delay)
@@ -277,7 +347,7 @@ class FlowPokerImageDeleter:
         self, question_ids: List[int], delay: float = 1.0
     ) -> List[DeletionResult]:
         """
-        Delete questions from a list of IDs
+        Delete questions from a list of IDs with retry logic
 
         Args:
             question_ids: List of question IDs to delete
@@ -296,6 +366,30 @@ class FlowPokerImageDeleter:
             results.append(result)
 
             logger.info(f"Progress: {i}/{total_questions} deletions attempted")
+
+            # If deletion failed after all retries with critical errors, stop processing
+            # But continue for already deleted images (404) and permission errors
+            if not result.success and result.error:
+                if "Unexpected error" in result.error:
+                    logger.error(
+                        f"Stopping deletion process due to repeated failures with question ID {question_id}"
+                    )
+                    logger.error(f"Processed {i} out of {total_questions} questions")
+                    break
+                elif "Question not found" in result.error:
+                    logger.info(
+                        f"Question ID {question_id} was already deleted, continuing to next..."
+                    )
+                elif (
+                    "Access forbidden" in result.error or "Unauthorized" in result.error
+                ):
+                    logger.warning(
+                        f"Permission denied for question ID {question_id}, continuing to next..."
+                    )
+                else:
+                    logger.warning(
+                        f"Other error for question ID {question_id}: {result.error}, continuing to next..."
+                    )
 
             # Add delay between deletions to avoid overwhelming the server
             if i < total_questions and delay > 0:

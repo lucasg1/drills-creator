@@ -34,11 +34,6 @@ class GameDataProcessor:
         # Find which players are still in the hand
         self.active_players = [p for p in self.players if not p.get("is_folded", False)]
 
-        # Replace UTG+2 with MP for consistency across the application
-        for player in self.players:
-            if player.get("position") == "UTG+2":
-                player["position"] = "MP"
-
         # Find the hero
         self.hero = next((p for p in self.players if p.get("is_hero", False)), None)
 
@@ -166,8 +161,7 @@ class GameDataProcessor:
             "CO": 3,  # Right top
             "HJ": 4,  # Top right
             "LJ": 5,  # Top middle
-            "MP": 6,  # Top left (UTG+2)
-            "UTG+2": 6,  # Also map UTG+2 to same position as MP
+            "UTG+2": 6,  # Top left
             "UTG+1": 7,  # Left middle
             "UTG": 8,  # Bottom left
         }

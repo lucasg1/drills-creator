@@ -28,8 +28,8 @@ import sys
 import glob
 import re
 import time
-import concurrent.futures
 import threading
+import concurrent.futures
 from dataclasses import dataclass
 from create_drill import FlowPokerDrillCreator
 
@@ -719,15 +719,17 @@ def process_scenario(
     if field_left and field_left.lower() == "final table":
         field_info = "Final Table"
     elif field_left and field_left.lower() == "3 tables":
-        field_info = "3 Tables"
+        field_info = "3 Tables Left"
     elif field_left and field_left.lower() == "2 tables":
-        field_info = "2 Tables"
+        field_info = "2 Tables Left"
+    elif field_left and field_left.lower() == "bubble":
+        field_info = "Bolha do ITM"
     else:
         # For numeric values, maintain the percentage format
         field_info = f"{field_left}% Field Left"
 
     name = f"{mode} | {position} | {action_type} | {stack_depth} BBs | {field_info}"
-    description = f"Nesse treino você irá aprender o range de RFI para o {position} em uma profundidade de {stack_depth} BBs."
+    description = f"Nesse treino, você irá aprender o range de RFI para o {position}, com {stack_depth} BBs de profundidade, no cenário de {field_info}."
 
     try:
         # Step 1: Create the drill
@@ -755,9 +757,21 @@ def process_scenario(
 
         logger.info(f"All {len(media_map)} images uploaded successfully!")
 
+        # Create a mapping from hands to media_ids for proper scoring
+        hand_to_media_map = {}
+        for index, media_id in media_map.items():
+            hand = hand_map.get(index)
+            if hand:
+                hand_to_media_map[hand] = media_id
+                logger.debug(f"Mapped hand {hand} to media_id {media_id}")
+
+        logger.info(f"Created hand-to-media mapping for {len(hand_to_media_map)} hands")
+
         # Step 3: Finish the uploading process to prepare for scoring
         logger.info("All images uploaded. Finishing upload phase...")
-        creator.finish_uploading()  # Step 4: Get questions from the API - note that this might only return the first question
+        creator.finish_uploading()
+
+        # Step 4: Get questions from the API - note that this might only return the first question
         logger.info("Getting questions list...")
         questions = creator.get_questions()
 
@@ -792,29 +806,41 @@ def process_scenario(
         if len(question_ids) > 5:
             logger.info(f"... and {len(question_ids) - 5} more question IDs")
 
-        # Step 5: Score ALL images as questions, one by one
+        # Step 5: Score ALL images as questions, based on hand mapping
         logger.info("Starting to score all questions...")
 
         # Keep track of successful scores
         successful_scores = 0
 
-        # Score each image as a question
-        for i, image_index in enumerate(range(num_images), start=1):
+        # Get all hands that have actions data, in sorted order for consistent processing
+        hands_with_data = sorted(
+            [hand for hand in hand_to_media_map.keys() if hand in actions_data]
+        )
+        hands_without_data = sorted(
+            [hand for hand in hand_to_media_map.keys() if hand not in actions_data]
+        )
+
+        # Process hands with data first, then hands without data
+        all_hands_to_process = hands_with_data + hands_without_data
+
+        logger.info(
+            f"Processing {len(hands_with_data)} hands with score data and {len(hands_without_data)} hands with default scores"
+        )
+
+        # Score each hand as a question
+        for i, hand in enumerate(all_hands_to_process, start=1):
             try:
                 # Get the question ID from our generated list
                 question_id = question_ids[i - 1]
 
-                # Get the media_id for this image
-                media_id = media_map.get(i)
+                # Get the media_id for this hand
+                media_id = hand_to_media_map.get(hand)
                 if not media_id:
-                    logger.warning(f"No media_id found for image {i}, skipping")
+                    logger.warning(f"No media_id found for hand {hand}, skipping")
                     continue
 
-                # Get the hand for this image
-                hand = hand_map.get(i)
-
                 # Get specific answer scores for this hand
-                if hand and hand in actions_data:
+                if hand in actions_data:
                     answer_scores = get_answer_scores_for_hand(
                         hand, actions_data, available_actions
                     )
@@ -865,7 +891,7 @@ def process_scenario(
                         success = True
                         successful_scores += 1
                         # Wait a bit to avoid overwhelming the server
-                        time.sleep(1)
+                        time.sleep(5)
                         break
                     except Exception as e:
                         error_msg = str(e)
@@ -890,9 +916,14 @@ def process_scenario(
                     logger.error(
                         f"Failed to score question after {max_retries} attempts"
                     )
-                    # Continue with next question anyway
+                    logger.error(
+                        "Fatal error during question scoring. Stopping drill creation."
+                    )
+                    return
             except Exception as e:
-                logger.error(f"Failed to process question {i}: {str(e)}")
+                logger.error(
+                    f"Failed to process question {i} for hand {hand}: {str(e)}"
+                )
 
         # Log summary of scoring results
         logger.info(

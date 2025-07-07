@@ -118,7 +118,7 @@ def make_flowpoker_request(
             headers=req_headers,
             json=json_data,
             verify=not disable_ssl_verify,
-            timeout=30,  # Increased timeout
+            timeout=60,  # Increased timeout
             files=files,
             data=data,
         )

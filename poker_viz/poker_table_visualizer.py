@@ -44,8 +44,10 @@ class PokerTableVisualizer:
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cards-images"
         )
 
+        num_players = len(self.data["game"]["players"])
+
         # Initialize configuration
-        self.config = PokerTableConfig()
+        self.config = PokerTableConfig(num_players=num_players)
 
         # Setup the image and draw objects
         self.img = Image.new(

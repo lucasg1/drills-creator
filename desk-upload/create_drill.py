@@ -325,11 +325,9 @@ class FlowPokerDrillCreator:
             # Log response data for debugging
             try:
                 response_data = response.json()
-                # Only log detailed response in debug mode
-                if logger.level <= logging.DEBUG:
-                    logger.debug(
-                        f"Score answer response: {sanitize_for_log(response_data)}"
-                    )
+                logger.debug(
+                    f"Score answer response: {sanitize_for_log(response_data)}"
+                )
             except Exception as e:
                 logger.debug(f"Could not parse response as JSON: {str(e)}")
 
@@ -450,7 +448,7 @@ class FlowPokerDrillCreator:
                 logger.error(f"Response: {response.text}")
             raise Exception(f"Failed to promote drill: {status_code} - {error_msg}")
 
-    def set_wizard_rules(self, amount: int = 1) -> bool:
+    def set_wizard_rules(self, amount: int = 20) -> bool:
         """
         Set the wizard rules for the drill. This is required before promotion.
 
@@ -470,7 +468,7 @@ class FlowPokerDrillCreator:
         # Create the rule payload
         payload = {
             "id": self.drill_id,
-            "amount": amount,
+            "amount": 20,
             "tags": tags,
             "validation": f"Total de questões com essa(s) tag(s): {amount}",
             "valid": True,

@@ -9,8 +9,8 @@ from PIL import ImageFont
 class PokerTableConfig:
     def __init__(self, scale_factor=2, num_players=8):
         # Image dimensions - base dimensions
-        self.base_width = 1200
-        self.base_height = 800
+        self.base_width = 1432
+        self.base_height = 849
 
         # Scale factor for high-res rendering
         self.scale_factor = scale_factor
@@ -24,8 +24,8 @@ class PokerTableConfig:
 
         # Table dimensions
         self.table_center_x = self.width // 2
-        self.table_center_y = self.height // 2
-        self.table_width = int(self.width * 0.85)  # Wider table
+        self.table_center_y = int(self.height * 0.44)  # Shifted upwards to create more space at bottom
+        self.table_width = int(self.width * 0.80)  # Wider table
         self.table_height = int(
             self.height * 0.5
         )  # Less tall to make it more elongated
@@ -37,6 +37,10 @@ class PokerTableConfig:
         self.table_color = (53, 101, 77, 255)  # Green table
         self.background_color = (30, 30, 30, 255)  # Dark background
         self.text_color = (255, 255, 255, 255)  # White text
+        # Golden color for scenario text
+        self.scenario_text_color = (255, 215, 0, 255)  # RGB for gold with full opacity
+        # Default background for text labels (subtle black with some transparency)
+        self.text_bg_color = (0, 0, 0, 50)
         self.player_color = (100, 100, 100, 255)  # Light gray player circles
         self.active_player_color = (80, 80, 160, 255)  # Blue for active player
         self.hero_player_color = (80, 160, 80, 255)  # Green for hero
@@ -51,12 +55,7 @@ class PokerTableConfig:
         self._init_seat_positions(self.num_players)
 
     def _init_seat_positions(self, num_players=8):
-        """Initialize seat positions around the table.
 
-        Args:
-            num_players: Number of players at the table (supports 6, 8, 9, or 10 players)
-        """
-        # Ensure num_players is valid, default to 8 if not
         if num_players not in [2, 3, 4, 5, 6, 7, 8, 9]:
             print(
                 f"Warning: Unsupported player count ({num_players}), defaulting to 8 players"
@@ -90,7 +89,7 @@ class PokerTableConfig:
         )
         top_middle = (
             self.table_center_x,
-            self.table_center_y - self.table_height * 0.60,
+            self.table_center_y - self.table_height * 0.57,
         )
         top_right = (
             self.table_center_x + self.table_width * 0.3,

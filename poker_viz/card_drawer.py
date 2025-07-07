@@ -62,8 +62,8 @@ class CardDrawer:
         )
 
         # Card dimensions - enlarged for better visibility
-        card_width = 90 * self.config.scale_factor
-        card_height = 135 * self.config.scale_factor
+        card_width = 80 * self.config.scale_factor
+        card_height = 120 * self.config.scale_factor
         card_overlap = (
             45 * self.config.scale_factor
         )  # Calculate rectangle dimensions (should match PlayerDrawer._draw_player_rectangle)
@@ -76,6 +76,8 @@ class CardDrawer:
         circle_radius = circle_diameter / 2
         circle_y_offset = rect_height * 0.4
 
+        card_offset_x = 13
+
         # Position cards between the circle and rectangle
         # Cards should be visible above the rectangle but below the top of the circle
         card_offset_y = (
@@ -83,7 +85,7 @@ class CardDrawer:
         )  # Position cards in the overlap area between circle and rectangle
 
         # First card (left card) - rotated counterclockwise
-        card1_left = hero_x - card_width / 2 - card_overlap / 2
+        card1_left = hero_x - card_width / 2 - card_overlap / 2 - card_offset_x
         card1_top = hero_y + card_offset_y
         self.draw_card(
             self.card1,
@@ -95,7 +97,7 @@ class CardDrawer:
         )
 
         # Second card (right card) - rotated clockwise
-        card2_left = hero_x - card_width / 2 + card_overlap / 2
+        card2_left = hero_x - card_width / 2 + card_overlap / 2 - card_offset_x
         card2_top = card1_top
         self.draw_card(
             self.card2,

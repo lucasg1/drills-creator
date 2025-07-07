@@ -321,9 +321,7 @@ class BatchVisualizer:
             output_subdir = (
                 self.output_dir / game_type / depth / street / action_seq / position
             )
-            os.makedirs(output_subdir, exist_ok=True)
-
-            # Clean the JSON data
+            os.makedirs(output_subdir, exist_ok=True)  # Clean the JSON data
             logger.info(f"Processing {file_path}")
             json_text = clear_spot_solution_json(str(file_path))
             clean_json = json.loads(json_text)
