@@ -2,3 +2,4 @@
 **/*.log
 card_extractor_from_image/*
 visualizations/*
+separated_solutions_by_hand/*

@@ -346,7 +346,7 @@ class BatchVisualizer:
             if self.max_threshold is not None:
                 filtered_df = filtered_df[filtered_df["best_ev"] <= self.max_threshold]
 
-            # Filter out hands where all non-fold actions have EV < -0.03
+            # Filter out hands where all non-fold actions have EV < -0.05
             if self.exclude_poor_actions:
 
                 def has_viable_non_fold_action(row):
@@ -357,7 +357,7 @@ class BatchVisualizer:
                     ]
 
                     return (
-                        any(ev >= -0.03 for ev in non_fold_evs)
+                        any(ev >= -0.05 for ev in non_fold_evs)
                         if non_fold_evs
                         else True
                     )
