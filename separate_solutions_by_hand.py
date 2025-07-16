@@ -40,10 +40,10 @@ def process_single_hand(args):
                 "action": metadata.get("action", ""),
                 "game_type": metadata.get("game_type", ""),
                 "street": metadata.get("street", ""),
-                "action_sequence": metadata.get("action_sequence", "")
+                "action_sequence": metadata.get("action_sequence", ""),
             },
             "spot_solution": clean_json.get("spot_solution", {}),
-            "hand_data": {}
+            "hand_data": {},
         }
 
         # Copy essential info from original JSON that applies to this hand
@@ -60,7 +60,7 @@ def process_single_hand(args):
         hand_json["hand_data"] = {
             "hand": hand,
             "best_action": row["best_action"],
-            "best_ev": row["best_ev"]
+            "best_ev": row["best_ev"],
         }
 
         # Add strategy and EV data for each action
@@ -229,7 +229,7 @@ class SolutionSeparator:
                 "action": action,
                 "game_type": game_type,
                 "street": street,
-                "action_sequence": action_seq
+                "action_sequence": action_seq,
             }
 
             # Create JSON file
@@ -256,13 +256,19 @@ class SolutionSeparator:
 
             # Extract key information from path
             game_type = path_parts[0] if len(path_parts) > 0 else "unknown"
-            depth = path_parts[1].replace("depth_", "") if len(path_parts) > 1 else "unknown"
+            depth = (
+                path_parts[1].replace("depth_", "")
+                if len(path_parts) > 1
+                else "unknown"
+            )
             street = path_parts[2] if len(path_parts) > 2 else "unknown"
             action_seq = path_parts[3] if len(path_parts) > 3 else "unknown"
             position = path_parts[4] if len(path_parts) > 4 else "unknown"
 
             # Create output directory that mirrors input structure
-            output_subdir = self.output_dir / game_type / depth / street / action_seq / position
+            output_subdir = (
+                self.output_dir / game_type / depth / street / action_seq / position
+            )
             os.makedirs(output_subdir, exist_ok=True)
 
             # Clean the JSON data
@@ -274,7 +280,9 @@ class SolutionSeparator:
             df_solutions = read_spot_solution(clean_json)
 
             # Dynamically gather all action codes from the dataframe columns
-            action_codes = [col[:-6] for col in df_solutions.columns if col.endswith("_strat")]
+            action_codes = [
+                col[:-6] for col in df_solutions.columns if col.endswith("_strat")
+            ]
 
             # Compute best EV for each row
             df_solutions["best_ev"] = df_solutions.apply(
@@ -290,6 +298,7 @@ class SolutionSeparator:
 
             # Filter out hands where all non-fold actions have EV < -0.05
             if self.exclude_poor_actions:
+
                 def has_viable_non_fold_action(row):
                     non_fold_evs = [
                         row[f"{code}_ev"]
@@ -297,9 +306,15 @@ class SolutionSeparator:
                         if code != "F" and f"{code}_ev" in row
                     ]
 
-                    return any(ev >= -0.05 for ev in non_fold_evs) if non_fold_evs else True
+                    return (
+                        any(ev >= -0.05 for ev in non_fold_evs)
+                        if non_fold_evs
+                        else True
+                    )
 
-                filtered_df = filtered_df[filtered_df.apply(has_viable_non_fold_action, axis=1)]
+                filtered_df = filtered_df[
+                    filtered_df.apply(has_viable_non_fold_action, axis=1)
+                ]
 
             filtered_df = filtered_df.copy()
 
@@ -320,14 +335,14 @@ class SolutionSeparator:
             # Create metadata JSON
             metadata = self.create_metadata_json(
                 game_type, depth, street, action_seq, position, output_subdir
-            )            # Process each hand in parallel
+            )  # Process each hand in parallel
             with ProcessPoolExecutor() as executor:
                 # Prepare arguments for each hand processing task
                 hand_args = [
                     ((row["hand"], row), clean_json, output_subdir, file_path, metadata)
                     for _, row in filtered_df.iterrows()
                 ]
-                
+
                 # Submit all hand processing tasks
                 future_to_hand = {
                     executor.submit(process_single_hand, args): args[0][0]
@@ -356,7 +371,9 @@ class SolutionSeparator:
                 f.write(f"Total hands in original solution: {len(df_solutions)}\n")
                 f.write(f"Separated hands: {len(filtered_df)}\n")
                 if self.min_threshold is not None or self.max_threshold is not None:
-                    f.write(f"EV range: {self.min_threshold} to {self.max_threshold}\n\n")
+                    f.write(
+                        f"EV range: {self.min_threshold} to {self.max_threshold}\n\n"
+                    )
 
                 f.write("Hands by action:\n")
                 action_counts = filtered_df["best_action"].value_counts()
@@ -404,41 +421,26 @@ def main():
     parser.add_argument(
         "--input",
         default="poker_solutions",
-        help="Directory containing solution JSON files"
+        help="Directory containing solution JSON files",
     )
     parser.add_argument(
         "--output",
         default="separated_solutions_by_hand",
-        help="Directory to save individual hand JSON files"
+        help="Directory to save individual hand JSON files",
     )
     parser.add_argument(
-        "--min-ev",
-        type=float,
-        default=None,
-        help="Minimum EV threshold"
+        "--min-ev", type=float, default=None, help="Minimum EV threshold"
     )
     parser.add_argument(
-        "--max-ev",
-        type=float,
-        default=None,
-        help="Maximum EV threshold"
+        "--max-ev", type=float, default=None, help="Maximum EV threshold"
     )
-    parser.add_argument(
-        "--game-type",
-        help="Filter by game type"
-    )
-    parser.add_argument(
-        "--depth",
-        help="Filter by stack depth"
-    )
-    parser.add_argument(
-        "--position",
-        help="Filter by position"
-    )
+    parser.add_argument("--game-type", help="Filter by game type")
+    parser.add_argument("--depth", help="Filter by stack depth")
+    parser.add_argument("--position", help="Filter by position")
     parser.add_argument(
         "--exclude-poor-actions",
         action="store_true",
-        help="Exclude hands where all non-fold actions have EV < -0.05"
+        help="Exclude hands where all non-fold actions have EV < -0.05",
     )
 
     args = parser.parse_args()
