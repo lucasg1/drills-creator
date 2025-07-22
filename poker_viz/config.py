@@ -19,12 +19,14 @@ class PokerTableConfig:
         self.num_players = num_players
 
         # Actual dimensions (higher resolution for better anti-aliasing)
-        self.width = self.base_width * self.scale_factor
-        self.height = self.base_height * self.scale_factor
+        self.width = int(self.base_width * self.scale_factor)
+        self.height = int(self.base_height * self.scale_factor)
 
         # Table dimensions
         self.table_center_x = self.width // 2
-        self.table_center_y = int(self.height * 0.44)  # Shifted upwards to create more space at bottom
+        self.table_center_y = int(
+            self.height * 0.44
+        )  # Shifted upwards to create more space at bottom
         self.table_width = int(self.width * 0.80)  # Wider table
         self.table_height = int(
             self.height * 0.5
@@ -174,18 +176,32 @@ class PokerTableConfig:
             ]
 
     def load_fonts(self):
-        font_dir = r"fonts\static"
+        # Use os.path.join for platform-independence
+        font_dir = os.path.join("fonts", "static")
 
         """Load fonts with appropriate scaling."""
         try:
-            title_font = ImageFont.truetype(os.path.join(font_dir, "Inter_24pt-Bold.ttf"), int(32 * self.scale_factor))
-            player_font = ImageFont.truetype(os.path.join(font_dir, "Inter_18pt-Regular.ttf"), int(20 * self.scale_factor))
-            card_font = ImageFont.truetype(os.path.join(font_dir, "Inter_24pt-SemiBold.ttf"), int(24 * self.scale_factor))
+            title_font = ImageFont.truetype(
+                os.path.join(font_dir, "Inter_24pt-Bold.ttf"),
+                int(32 * self.scale_factor),
+            )
+            player_font = ImageFont.truetype(
+                os.path.join(font_dir, "Inter_18pt-Regular.ttf"),
+                int(20 * self.scale_factor),
+            )
+            card_font = ImageFont.truetype(
+                os.path.join(font_dir, "Inter_24pt-SemiBold.ttf"),
+                int(24 * self.scale_factor),
+            )
         except IOError:
             # Fallback to Arial
             try:
-                title_font = ImageFont.truetype("arial.ttf", int(32 * self.scale_factor))
-                player_font = ImageFont.truetype("arial.ttf", int(20 * self.scale_factor))
+                title_font = ImageFont.truetype(
+                    "arial.ttf", int(32 * self.scale_factor)
+                )
+                player_font = ImageFont.truetype(
+                    "arial.ttf", int(20 * self.scale_factor)
+                )
                 card_font = ImageFont.truetype("arial.ttf", int(24 * self.scale_factor))
             except IOError:
                 # Final fallback to default bitmap font

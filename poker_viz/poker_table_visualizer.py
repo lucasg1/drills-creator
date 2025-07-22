@@ -23,6 +23,7 @@ class PokerTableVisualizer:
         card2=None,
         output_path="poker_table.png",
         solution_path=None,
+        scale_factor=2,
     ):
         """
         Initialize the poker table visualizer.
@@ -32,6 +33,8 @@ class PokerTableVisualizer:
             card1: First hero card (e.g., "Ah")
             card2: Second hero card (e.g., "Kd")
             output_path: Path to save the output image
+            solution_path: Path to the solution file (optional)
+            scale_factor: Scale factor for rendering (default: 2)
         """
         self.data = json_data
         self.card1 = card1
@@ -47,7 +50,9 @@ class PokerTableVisualizer:
         num_players = len(self.data["game"]["players"])
 
         # Initialize configuration
-        self.config = PokerTableConfig(num_players=num_players)
+        self.config = PokerTableConfig(
+            scale_factor=scale_factor, num_players=num_players
+        )
 
         # Setup the image and draw objects
         self.img = Image.new(

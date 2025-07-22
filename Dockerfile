@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
+    fontconfig \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker layer caching
@@ -24,6 +26,7 @@ COPY poker_table_visualizer.py .
 COPY clear_spot_solution_json.py .
 COPY fonts/ ./fonts/
 COPY cards-images/ ./cards-images/
+COPY poker_solutions/ ./poker_solutions/
 COPY flow_logo.png .
 COPY avatar.png .
 
@@ -51,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8777/health || exit 1
 
 # Run with gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:8777", "--workers", "4", "--timeout", "120", "--worker-class", "sync", "hand_image_server:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:8777", "--workers", "4", "--timeout", "120", "--worker-class", "sync", "hand_image_server:app"]

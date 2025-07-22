@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "original_file": "poker_solutions\\MTTGeneral_ICM9m200PTPCT50\\depth_30_125\\preflop\\pf_FFFFF\\CO\\hero_CO_54.json",
+    "hand": "22",
+    "best_action": "F",
+    "best_ev": 0.0,
+    "mode": "icm",
+    "field_size": 200,
+    "field_left": "50%",
+    "position": "co",
+    "stack_depth": "30_125",
+    "action": "rfi",
+    "game_type": "MTTGeneral_ICM9m200PTPCT50",
+    "street": "preflop",
+    "action_sequence": "pf_FFFFF"
+  },
+  "spot_solution": {},
+  "hand_data": {
+    "hand": "22",
+    "best_action": "F",
+    "best_ev": 0.0,
+    "F_strat": 100.0,
+    "F_ev": 0.0,
+    "R2_strat": 0.0,
+    "R2_ev": -0.02294,
+    "RAI_strat": 0.0,
+    "RAI_ev": -0.60134
+  }
+}

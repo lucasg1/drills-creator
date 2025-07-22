@@ -3,10 +3,10 @@ import os
 import pandas as pd
 from pathlib import Path
 import argparse
+import logging
 from read_solution import read_spot_solution
 from clear_spot_solution_json import clear_spot_solution_json
 from poker_table_visualizer import PokerTableVisualizer
-import logging
 import random
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -75,6 +75,7 @@ def create_single_visualization(args):
         card2,
         str(output_path),
         solution_path=str(file_path),
+        scale_factor=1,  # Using integer value to avoid float-related errors
     )
     visualizer.create_visualization()
 
