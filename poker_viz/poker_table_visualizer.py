@@ -103,11 +103,12 @@ class PokerTableVisualizer:
         self.chip_drawer = ChipDrawer(self.config, self.game_data, self.img, self.draw)
         self.chip_drawer.set_fonts(self.title_font, self.player_font, self.card_font)
 
-        # Template image for static elements
-        self.template_image = None
+        # Template image for static elements. Keep existing template if present
+        if not hasattr(self, "template_image"):
+            self.template_image = None
 
     def create_template(self):
-        """Create a template image with static elements (table, background, logo)"""
+        """Create a template image with static elements pre-rendered."""
         # Reset the image and draw objects
         template = Image.new(
             "RGBA",
@@ -124,8 +125,33 @@ class PokerTableVisualizer:
             self.title_font, self.player_font, self.card_font
         )
 
-        # Draw the table on the template
-        template, _ = template_table_drawer.draw_table()
+        # Draw the table surface without dynamic text
+        template, _ = template_table_drawer.draw_table(draw_text=False)
+
+        # --------------------------------------------------------------
+        # Pre-draw players and villain cards so they don't need to be
+        # rendered for every request
+        # --------------------------------------------------------------
+        template_player_drawer = PlayerDrawer(
+            self.config, self.game_data, template, template_draw
+        )
+        template_player_drawer.set_fonts(
+            self.title_font, self.player_font, self.card_font
+        )
+        template, template_draw = template_player_drawer.draw_player_circles()
+        template_player_drawer.img = template
+        template_player_drawer.draw = template_draw
+        template, template_draw = template_player_drawer.draw_player_rectangles(
+            draw_info=False
+        )
+
+        template_card_drawer = CardDrawer(
+            self.config, self.game_data, template, template_draw, self.cards_folder
+        )
+        template_card_drawer.set_fonts(
+            self.title_font, self.player_font, self.card_font
+        )
+        template, template_draw = template_card_drawer.draw_player_cards()
 
         # Store the template
         self.template_image = template
@@ -172,22 +198,6 @@ class PokerTableVisualizer:
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
 
-        # Draw players - this now draws only the background circles
-        player_circles_img, player_circles_draw = (
-            self.player_drawer.draw_player_circles()
-        )
-        self.img = player_circles_img
-        self.draw = player_circles_draw
-
-        # Update card drawer with the current image
-        self.card_drawer.img = self.img
-        self.card_drawer.draw = self.draw
-
-        # Draw cards for non-hero players still in the hand
-        other_cards_img, other_cards_draw = self.card_drawer.draw_player_cards()
-        self.img = other_cards_img
-        self.draw = other_cards_draw
-
         # Draw hero cards if provided
         if self.card1 and self.card2:
             cards_img, cards_draw = self.card_drawer.draw_hero_cards()
@@ -198,12 +208,10 @@ class PokerTableVisualizer:
         self.player_drawer.img = self.img
         self.player_drawer.draw = self.draw
 
-        # Draw player info rectangles on top of the circles and cards
-        player_rectangles_img, player_rectangles_draw = (
-            self.player_drawer.draw_player_rectangles()
-        )
-        self.img = player_rectangles_img
-        self.draw = player_rectangles_draw
+        # Draw only the player information text
+        player_text_img, player_text_draw = self.player_drawer.draw_player_text()
+        self.img = player_text_img
+        self.draw = player_text_draw
 
         # Update chip drawer with the current image
         self.chip_drawer.img = self.img
@@ -213,6 +221,13 @@ class PokerTableVisualizer:
         chips_img, chips_draw = self.chip_drawer.draw_player_chips()
         self.img = chips_img
         self.draw = chips_draw
+
+        # Draw dynamic table text (scenario and pot)
+        self.table_drawer.img = self.img
+        self.table_drawer.draw = self.draw
+        self.table_drawer.draw_table_text()
+        self.img = self.table_drawer.img
+        self.draw = self.table_drawer.draw
 
         # Skip Gaussian blur for performance optimization
         # Directly downsample to the original base resolution with a faster filter

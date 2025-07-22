@@ -89,8 +89,15 @@ class TableDrawer:
         self.draw = ImageDraw.Draw(self.img, "RGBA")
         self.draw.text((x, y), text, fill=fill, font=font)
 
-    def draw_table(self):
-        """Draw the poker table with a simple 3D effect."""
+    def draw_table(self, draw_text=True):
+        """Draw the poker table with a simple 3D effect.
+
+        Parameters
+        ----------
+        draw_text : bool, optional
+            If ``True`` also render the scenario and pot text. When preparing a
+            static template this can be disabled so text can be drawn later.
+        """
         # Get dimensions from config
         table_center_x = self.config.table_center_x
         table_center_y = self.config.table_center_y
@@ -319,7 +326,23 @@ class TableDrawer:
         self.img = Image.alpha_composite(self.img, table_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
-        # Scenario description above the logo
+        if draw_text:
+            self.draw_table_text(table_center_x, table_center_y, logo_height)
+
+        return self.img, self.draw
+
+    def draw_table_text(self, table_center_x=None, table_center_y=None, logo_height=0):
+        """Draw the scenario and pot text on the already rendered table."""
+
+        if table_center_x is None:
+            table_center_x = self.config.table_center_x
+        if table_center_y is None:
+            table_center_y = self.config.table_center_y
+
+        scale_factor = self.config.scale_factor
+        text_color = self.config.text_color
+        scenario_text_color = self.config.scenario_text_color
+
         scenario_text = self.game_data.get_scenario_description()
         scenario_width = self.draw.textlength(scenario_text, font=self.player_font)
         scenario_height = self.title_font.getbbox(scenario_text)[3]
@@ -334,7 +357,6 @@ class TableDrawer:
             fill=scenario_text_color,
         )
 
-        # Draw the pot below the logo
         pot_text = f"Total Pot: {self.game_data.pot:.2f} BB"
         pot_width = self.draw.textlength(pot_text, font=self.player_font)
         pot_y = table_center_y + logo_height / 4 + 30
