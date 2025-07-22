@@ -195,72 +195,123 @@ class PokerTableVisualizer:
         self.player_signature = self._compute_player_signature()
 
     def create_visualization(self):
+        import time
         """Create the poker table visualization."""
+        start_total = time.time()
+
         # Refresh the visualizer's state when reusing it
+        refresh_start = time.time()
         self.refresh()
+        refresh_time = time.time() - refresh_start
 
         # If we don't have a template yet, create one
+        template_time = 0
         if not self.template_image:
+            template_start = time.time()
             self.create_template()
             self.refresh()  # Refresh again with the template as a base
+            template_time = time.time() - template_start
 
         # Update drawer objects with the current image and draw objects
+        update_start = time.time()
         self.card_drawer.img = self.img
         self.card_drawer.draw = self.draw
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
+        update_time = time.time() - update_start
 
         # Generate player layers if needed
+        layers_time = 0
         current_sig = self._compute_player_signature()
         if (
             self.circle_layer is None
             or self.rectangle_layer is None
             or current_sig != self.player_signature
         ):
+            layers_start = time.time()
             self._create_player_layers()
+            layers_time = time.time() - layers_start
 
         # Composite background circles
+        circles_start = time.time()
         self.img = Image.alpha_composite(self.img, self.circle_layer)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
+        circles_time = time.time() - circles_start
 
         # Update card drawer with the current image
+        update_cards_start = time.time()
         self.card_drawer.img = self.img
         self.card_drawer.draw = self.draw
+        update_cards_time = time.time() - update_cards_start
 
         # Draw cards for non-hero players still in the hand
+        other_cards_start = time.time()
         other_cards_img, other_cards_draw = self.card_drawer.draw_player_cards()
         self.img = other_cards_img
         self.draw = other_cards_draw
+        other_cards_time = time.time() - other_cards_start
 
         # Draw hero cards if provided
+        hero_cards_time = 0
         if self.card1 and self.card2:
+            hero_cards_start = time.time()
             cards_img, cards_draw = self.card_drawer.draw_hero_cards()
             self.img = cards_img
             self.draw = cards_draw
+            hero_cards_time = time.time() - hero_cards_start
 
         # Composite player rectangles on top of the cards
+        rect_start = time.time()
         self.img = Image.alpha_composite(self.img, self.rectangle_layer)
         self.draw = ImageDraw.Draw(self.img, "RGBA")
+        rect_time = time.time() - rect_start
 
         # Update chip drawer with the current image
+        update_chips_start = time.time()
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
+        update_chips_time = time.time() - update_chips_start
 
         # Draw player chips
+        chips_start = time.time()
         chips_img, chips_draw = self.chip_drawer.draw_player_chips()
         self.img = chips_img
         self.draw = chips_draw
+        chips_time = time.time() - chips_start
 
-        # Skip Gaussian blur for performance optimization
-        # Directly downsample to the original base resolution with a faster filter
+        # Resize if needed
+        resize_time = 0
         if hasattr(self.config, "scale_factor") and self.config.scale_factor > 1:
+            resize_start = time.time()
             self.img = self.img.resize(
                 (self.config.base_width, self.config.base_height), Image.BICUBIC
             )
+            resize_time = time.time() - resize_start
 
         # Save the image
+        save_start = time.time()
         self.img.save(self.output_path, optimize=True)
+        save_time = time.time() - save_start
+
+        total_time = time.time() - start_total
+
+        # Print timing information
         print(f"Poker table visualization saved to {self.output_path}")
+        print(f"Performance breakdown:")
+        print(f"  - Refresh: {refresh_time:.4f}s")
+        print(f"  - Template creation: {template_time:.4f}s")
+        print(f"  - Update drawers: {update_time:.4f}s")
+        print(f"  - Create player layers: {layers_time:.4f}s")
+        print(f"  - Composite circles: {circles_time:.4f}s")
+        print(f"  - Update card drawer: {update_cards_time:.4f}s")
+        print(f"  - Draw other cards: {other_cards_time:.4f}s")
+        print(f"  - Draw hero cards: {hero_cards_time:.4f}s")
+        print(f"  - Composite rectangles: {rect_time:.4f}s")
+        print(f"  - Update chip drawer: {update_chips_time:.4f}s")
+        print(f"  - Draw chips: {chips_time:.4f}s")
+        print(f"  - Resize image: {resize_time:.4f}s")
+        print(f"  - Save image: {save_time:.4f}s")
+        print(f"  - Total time: {total_time:.4f}s")
 
         return self.output_path
 
@@ -276,6 +327,7 @@ def load_json_data(json_file):
 def main():
     """Main function to run the poker table visualizer."""
     import json
+    import time
 
     # Path to the JSON file
     json_file = "poker_solutions/MTTGeneral_ICM8m200PTSTART/depth_100_125/preflop/no_actions/UTG/hero_UTG_22.json"

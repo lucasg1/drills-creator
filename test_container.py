@@ -1,4 +1,5 @@
 import requests
+import time
 
 url = "http://127.0.0.1:8777/generate_image"
 
@@ -34,7 +35,14 @@ payload = {
 
 headers = {"Content-Type": "application/json"}
 
+# Start timing
+start_time = time.time()
+
 response = requests.post(url, json=payload, headers=headers)
+
+# Calculate elapsed time
+elapsed_time = time.time() - start_time
+print(f"Request took {elapsed_time:.2f} seconds")
 
 # Save the received image if request is successful
 if response.status_code == 200:
