@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Global cache for visualizer instances
-# Keys will be (game_type, num_players, hero_position)
+# Keys will be (num_players, hero_position)
 visualizer_cache = {}
 
 
@@ -73,7 +73,7 @@ def init_visualizer_cache():
             )
 
             # Create a visualizer instance for this configuration if it doesn't exist
-            cache_key = (game_type, num_players, hero_position)
+            cache_key = (num_players, hero_position)
             if cache_key not in visualizer_cache:
                 logger.info(
                     f"Creating visualizer for game type {game_type} with {num_players} players"
@@ -228,12 +228,12 @@ def create_visualization_from_json(hand_json):
                 )
 
                 # Try to get a cached visualizer for this configuration
-                cache_key = (game_type, num_players, hero_position)
+                cache_key = (num_players, hero_position)
 
                 if cache_key in visualizer_cache:
                     # Use the cached visualizer
                     logger.info(
-                        f"Using cached visualizer for {game_type} with {num_players} players and hero {hero_position}"
+                        f"Using cached visualizer for {num_players} players and hero {hero_position}"
                     )
                     visualizer = visualizer_cache[cache_key]
 
@@ -245,7 +245,7 @@ def create_visualization_from_json(hand_json):
                 else:
                     # Create a new visualizer and add it to the cache
                     logger.info(
-                        f"Creating new visualizer for {game_type} with {num_players} players and hero {hero_position}"
+                        f"Creating new visualizer for {num_players} players and hero {hero_position}"
                     )
                     visualizer = PokerTableVisualizer(
                         original_json,
