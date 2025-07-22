@@ -14,7 +14,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
 
 # Global cache for visualizer instances
@@ -153,6 +152,7 @@ def init_visualizer_cache():
         f"Visualizer cache initialized with {len(visualizer_cache)} configurations"
     )
 
+init_visualizer_cache()
 
 def convert_hand_to_cards(hand):
     """Convert hand notation (e.g., AKs, 22) to individual cards"""
@@ -447,7 +447,6 @@ def home():
             },
         }
     )
-
 
 if __name__ == "__main__":
     # Initialize visualizer cache before starting the server

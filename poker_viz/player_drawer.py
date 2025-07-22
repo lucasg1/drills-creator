@@ -678,7 +678,7 @@ class PlayerDrawer:
 
         # Calculate position to center the avatar
         avatar_x = int(x - avatar_radius)
-        avatar_y = int(y - avatar_radius - 35)
+        avatar_y = int(y - avatar_radius - 10)
 
         # Apply the circular mask to the avatar
         avatar_masked = Image.new("RGBA", (avatar_size, avatar_size), (0, 0, 0, 0))
