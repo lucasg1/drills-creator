@@ -32,6 +32,7 @@ class CardDrawer:
         self.cards_folder = cards_folder
         self.card1 = card1
         self.card2 = card2
+        self.card_cache = {}  # Card cache for faster loading
 
         # Preload card back image
         self._preload_card_back()
@@ -47,6 +48,8 @@ class CardDrawer:
         card_back_path = os.path.join(self.cards_folder, "back.png")
         if os.path.exists(card_back_path):
             self.card_back_img = Image.open(card_back_path)
+            # Store in cache
+            self.card_cache["back.png"] = self.card_back_img
         else:
             self.card_back_img = None
 
@@ -57,8 +60,10 @@ class CardDrawer:
 
         # Hero is always at the bottom middle position
         hero_x, hero_y = (
-            self.config.table_center_x + self.config.player_radius/1.5,
-            self.config.table_center_y + self.config.table_height * 0.7 - self.config.player_radius / 4,
+            self.config.table_center_x + self.config.player_radius / 1.5,
+            self.config.table_center_y
+            + self.config.table_height * 0.7
+            - self.config.player_radius / 4,
         )
 
         # Card dimensions - enlarged for better visibility
@@ -128,44 +133,52 @@ class CardDrawer:
         card_filename = f"{rank}{suit}.png"
         card_path = os.path.join(self.cards_folder, card_filename)
 
+        # Create a cache key based on card and dimensions
+        cache_key = f"{card_filename}_{width}_{height}"
+
+        # Check if the card is already in cache
+        if cache_key in self.card_cache:
+            card_img = self.card_cache[cache_key]
         # Check if the card image exists
-        if os.path.exists(card_path):
+        elif os.path.exists(card_path):
             # Load the card image
             card_img = Image.open(card_path)
-
-            # Resize the card image to the desired dimensions
-            card_img = card_img.resize((width, height), Image.LANCZOS)
-
-            # Rotate the card if needed
-            if rotation_angle != 0:
-                # Calculate the diagonal length to ensure rotated image is fully visible
-                diagonal = int(math.sqrt(width**2 + height**2))
-                # Create a square transparent image large enough to hold the rotated card
-                rot_img = Image.new("RGBA", (diagonal, diagonal), (0, 0, 0, 0))
-                # Paste the card in the center of this image
-                paste_x = (diagonal - width) // 2
-                paste_y = (diagonal - height) // 2
-                rot_img.paste(card_img, (paste_x, paste_y))
-                # Rotate around the center
-                rot_img = rot_img.rotate(
-                    rotation_angle, resample=Image.BICUBIC, expand=False
-                )
-                # Calculate new position to center the rotated image
-                paste_x = int(x - diagonal / 2)
-                paste_y = int(y - diagonal / 2)
-                # Use alpha composite to properly overlay
-                self.img.alpha_composite(rot_img, (paste_x, paste_y))
-            else:
-                # Paste the card directly for non-rotated cards
-                paste_x = int(x)
-                paste_y = int(y)
-                self.img.alpha_composite(card_img, (paste_x, paste_y))
-
-            # Update the draw object
-            self.draw = ImageDraw.Draw(self.img, "RGBA")
+            # Resize the card image using a faster method
+            card_img = card_img.resize((width, height), Image.BICUBIC)
+            # Store in cache for future use
+            self.card_cache[cache_key] = card_img
         else:
             # Fallback to drawing a basic card
             self._draw_fallback_card(card, x, y, width, height, rotation_angle)
+            return
+
+        # Rotate the card if needed
+        if rotation_angle != 0:
+            # Calculate the diagonal length to ensure rotated image is fully visible
+            diagonal = int(math.sqrt(width**2 + height**2))
+            # Create a square transparent image large enough to hold the rotated card
+            rot_img = Image.new("RGBA", (diagonal, diagonal), (0, 0, 0, 0))
+            # Paste the card in the center of this image
+            paste_x = (diagonal - width) // 2
+            paste_y = (diagonal - height) // 2
+            rot_img.paste(card_img, (paste_x, paste_y))
+            # Rotate around the center using a faster method
+            rot_img = rot_img.rotate(
+                rotation_angle, resample=Image.BICUBIC, expand=False
+            )
+            # Calculate new position to center the rotated image
+            paste_x = int(x - diagonal / 2)
+            paste_y = int(y - diagonal / 2)
+            # Use alpha composite to properly overlay
+            self.img.alpha_composite(rot_img, (paste_x, paste_y))
+        else:
+            # Paste the card directly for non-rotated cards
+            paste_x = int(x)
+            paste_y = int(y)
+            self.img.alpha_composite(card_img, (paste_x, paste_y))
+
+        # Update the draw object
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
     def _draw_fallback_card(self, card, x, y, width, height, rotation_angle=0):
         """Draw a basic card as fallback if image loading fails."""
