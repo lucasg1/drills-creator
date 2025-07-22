@@ -3,6 +3,7 @@ Main module for poker table visualization.
 """
 
 import os
+import io
 from PIL import Image, ImageDraw, ImageFilter
 
 from .config import PokerTableConfig
@@ -226,6 +227,52 @@ class PokerTableVisualizer:
         print(f"Poker table visualization saved to {self.output_path}")
 
         return self.output_path
+
+    def create_visualization_bytes(self):
+        """Create the visualization and return PNG bytes without saving."""
+        # Build the image using the same steps as create_visualization
+        self.refresh()
+        if not self.template_image:
+            self.create_template()
+            self.refresh()
+
+        self.player_drawer.img = self.img
+        self.player_drawer.draw = self.draw
+        player_circles_img, player_circles_draw = (
+            self.player_drawer.draw_player_circles()
+        )
+        self.img = player_circles_img
+        self.draw = player_circles_draw
+        self.card_drawer.img = self.img
+        self.card_drawer.draw = self.draw
+        other_cards_img, other_cards_draw = self.card_drawer.draw_player_cards()
+        self.img = other_cards_img
+        self.draw = other_cards_draw
+        if self.card1 and self.card2:
+            cards_img, cards_draw = self.card_drawer.draw_hero_cards()
+            self.img = cards_img
+            self.draw = cards_draw
+        self.player_drawer.img = self.img
+        self.player_drawer.draw = self.draw
+        player_rectangles_img, player_rectangles_draw = (
+            self.player_drawer.draw_player_rectangles()
+        )
+        self.img = player_rectangles_img
+        self.draw = player_rectangles_draw
+        self.chip_drawer.img = self.img
+        self.chip_drawer.draw = self.draw
+        chips_img, chips_draw = self.chip_drawer.draw_player_chips()
+        self.img = chips_img
+        self.draw = chips_draw
+        if hasattr(self.config, "scale_factor") and self.config.scale_factor > 1:
+            self.img = self.img.resize(
+                (self.config.base_width, self.config.base_height), Image.BICUBIC
+            )
+
+        buffer = io.BytesIO()
+        self.img.save(buffer, format="PNG", optimize=True)
+        buffer.seek(0)
+        return buffer
 
 
 def load_json_data(json_file):

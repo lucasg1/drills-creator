@@ -5,8 +5,51 @@ import random
 import logging
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
-from poker_table_visualizer import PokerTableVisualizer, load_json_data
-from clear_spot_solution_json import clear_spot_solution_json
+from poker_table_visualizer import PokerTableVisualizer
+
+# Cache for already loaded and cleaned solution JSON files
+json_cache = {}
+
+
+def load_clean_json(file_path):
+    """Load and clean a solution JSON file with caching."""
+    if file_path in json_cache:
+        return json_cache[file_path]
+
+    try:
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
+        # Keys that should be removed from each player info block
+        keys_to_remove = [
+            "equity_buckets",
+            "equity_buckets_advanced",
+            "hand_categories",
+            "draw_categories",
+        ]
+
+        # Remove heavy fields from players_info
+        if "players_info" in data:
+            for player_info in data["players_info"]:
+                for key in keys_to_remove:
+                    player_info.pop(key, None)
+                if (
+                    "player" in player_info
+                    and "relative_postflop_position" in player_info["player"]
+                ):
+                    del player_info["player"]["relative_postflop_position"]
+
+        # Clean action_solutions blocks
+        if "action_solutions" in data:
+            for action in data["action_solutions"]:
+                for key in keys_to_remove:
+                    action.pop(key, None)
+
+        json_cache[file_path] = data
+        return data
+    except Exception as e:
+        logger.warning(f"Failed to load solution file {file_path}: {e}")
+        return None
 
 # Set up logging
 logging.basicConfig(
@@ -61,9 +104,8 @@ def init_visualizer_cache():
         logger.info(f"Using template file: {json_path}")
 
         try:
-            # Load the JSON data
-            json_text = clear_spot_solution_json(json_path)
-            json_data = json.loads(json_text)
+            # Load the JSON data using the caching helper
+            json_data = load_clean_json(json_path)
 
             # Get the number of players
             num_players = len(json_data["game"]["players"])
@@ -174,7 +216,7 @@ def create_visualization_from_json(hand_json):
         # Convert hand notation to card notation
         card1, card2 = convert_hand_to_cards(hand)
 
-        # Create temporary output file
+        # Temporary output path for compatibility when saving to disk
         temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
         output_path = temp_file.name
         temp_file.close()
@@ -183,6 +225,7 @@ def create_visualization_from_json(hand_json):
         solutions_dir = Path("poker_solutions")
         original_file = None
         original_json = None
+        image_bytes = None
 
         if game_type and position:
             # Normalize stack_depth to match folder structure format
@@ -213,8 +256,7 @@ def create_visualization_from_json(hand_json):
         try:
             if original_file:
                 # Load the original solution to get the game structure
-                json_text = clear_spot_solution_json(original_file)
-                original_json = json.loads(json_text)
+                original_json = load_clean_json(original_file)
 
                 # Get the number of players
                 num_players = len(original_json["game"]["players"])
@@ -258,8 +300,8 @@ def create_visualization_from_json(hand_json):
                     visualizer.create_template()
                     visualizer_cache[cache_key] = visualizer
 
-                # Generate the visualization
-                visualizer.create_visualization()
+                # Generate the visualization and get bytes
+                image_bytes = visualizer.create_visualization_bytes()
                 logger.info(
                     f"Created visualization using solution from {original_file}"
                 )
@@ -270,14 +312,16 @@ def create_visualization_from_json(hand_json):
                     f"position={position}, stack_depth={stack_depth}, action_sequence={action_sequence}"
                 )
                 # Fall back to minimal structure (would need to be implemented)
+                image_bytes = None
 
         except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
             logger.warning(
                 f"Couldn't load original file: {original_file}. Creating minimal structure: {e}"
             )
             # Fall back to minimal structure (would need to be implemented)
+            image_bytes = None
 
-        return output_path
+        return image_bytes
 
     except Exception as e:
         logger.error(f"Error creating visualization: {e}", exc_info=True)
@@ -334,18 +378,13 @@ def generate_image():
                     400,
                 )
 
-        # Generate the visualization
-        image_path = create_visualization_from_json(hand_json)
-
-        # Return the image file
-        def cleanup_file():
-            try:
-                os.unlink(image_path)
-            except:
-                pass
+        # Generate the visualization and receive bytes
+        image_bytes = create_visualization_from_json(hand_json)
+        if image_bytes is None:
+            return jsonify({"error": "Failed to create visualization"}), 500
 
         return send_file(
-            image_path,
+            image_bytes,
             mimetype="image/png",
             as_attachment=False,
             download_name=f"{metadata['hand']}_{metadata['best_action']}_{metadata['best_ev']:.6f}.png",
