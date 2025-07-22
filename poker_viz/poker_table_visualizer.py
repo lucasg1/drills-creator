@@ -103,7 +103,14 @@ class PokerTableVisualizer:
         self.chip_drawer = ChipDrawer(self.config, self.game_data, self.img, self.draw)
         self.chip_drawer.set_fonts(self.title_font, self.player_font, self.card_font)
 
-        # Template image for static elements. Keep existing template if present
+        # Template images for static elements.
+        # template_base contains everything except the player rectangles so
+        # hero cards can be drawn underneath them. rectangles_overlay stores the
+        # pre-rendered rectangles to overlay afterwards.
+        if not hasattr(self, "template_base"):
+            self.template_base = None
+        if not hasattr(self, "rectangles_overlay"):
+            self.rectangles_overlay = None
         if not hasattr(self, "template_image"):
             self.template_image = None
 
@@ -129,8 +136,7 @@ class PokerTableVisualizer:
         template, _ = template_table_drawer.draw_table(draw_text=False)
 
         # --------------------------------------------------------------
-        # Pre-draw players and villain cards so they don't need to be
-        # rendered for every request
+        # Pre-draw players so heavy shapes are rendered once
         # --------------------------------------------------------------
         template_player_drawer = PlayerDrawer(
             self.config, self.game_data, template, template_draw
@@ -141,10 +147,10 @@ class PokerTableVisualizer:
         template, template_draw = template_player_drawer.draw_player_circles()
         template_player_drawer.img = template
         template_player_drawer.draw = template_draw
-        template, template_draw = template_player_drawer.draw_player_rectangles(
-            draw_info=False
-        )
 
+        # --------------------------------------------------------------
+        # Villain cards are drawn between the circle and the rectangle
+        # --------------------------------------------------------------
         template_card_drawer = CardDrawer(
             self.config, self.game_data, template, template_draw, self.cards_folder
         )
@@ -153,16 +159,40 @@ class PokerTableVisualizer:
         )
         template, template_draw = template_card_drawer.draw_player_cards()
 
-        # Store the template
+        # Save base template without rectangles for later reuse
+        self.template_base = template.copy()
+
+        # --------------------------------------------------------------
+        # Pre-render player rectangles on a transparent overlay so we can
+        # composite them after drawing hero cards
+        # --------------------------------------------------------------
+        rect_overlay = Image.new(
+            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
+        )
+        rect_draw = ImageDraw.Draw(rect_overlay, "RGBA")
+        overlay_player_drawer = PlayerDrawer(
+            self.config, self.game_data, rect_overlay, rect_draw
+        )
+        overlay_player_drawer.set_fonts(
+            self.title_font, self.player_font, self.card_font
+        )
+        rect_overlay, rect_draw = overlay_player_drawer.draw_player_rectangles(
+            draw_info=False
+        )
+        self.rectangles_overlay = rect_overlay
+
+        # Compose a full template image for cases where no hero cards are drawn
+        template = Image.alpha_composite(self.template_base, self.rectangles_overlay)
+        template_draw = ImageDraw.Draw(template, "RGBA")
         self.template_image = template
 
         return self.template_image
 
     def refresh(self):
         """Refresh the visualizer's state when reusing it for different hands."""
-        # If we have a template, use it as the starting point
-        if self.template_image:
-            self.img = self.template_image.copy()
+        # If we have a base template, use it as the starting point
+        if self.template_base is not None:
+            self.img = self.template_base.copy()
         else:
             # Otherwise create a new blank image
             self.img = Image.new(
@@ -203,6 +233,12 @@ class PokerTableVisualizer:
             cards_img, cards_draw = self.card_drawer.draw_hero_cards()
             self.img = cards_img
             self.draw = cards_draw
+
+        # After hero cards, overlay the pre-rendered rectangles so that
+        # all cards appear behind them
+        if self.rectangles_overlay is not None:
+            self.img = Image.alpha_composite(self.img, self.rectangles_overlay)
+            self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # Update player drawer with the current image after cards are drawn
         self.player_drawer.img = self.img
