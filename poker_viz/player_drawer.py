@@ -201,95 +201,35 @@ class PlayerDrawer:
         """Draw a background circle with anti-aliasing."""
         scale_factor = self.config.scale_factor
 
-        # Create a circular mask for the player
-        circle_mask = Image.new("L", (self.config.width, self.config.height), 0)
-        circle_mask_draw = ImageDraw.Draw(circle_mask)
-
-        # Draw the circle on the mask
-        circle_mask_draw.ellipse(
-            [
-                x - radius,
-                y - radius,
-                x + radius,
-                y + radius,
-            ],
-            fill=255,
-        )
-
-        # Apply slight blur for smoother edges
-        circle_mask = circle_mask.filter(
-            ImageFilter.GaussianBlur(radius=scale_factor * 0.5)
-        )
-
-        # Create a player circle overlay
+        # Draw the circle directly using Pillow primitives for speed
         circle_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
-
-        # Fill the player circle with the appropriate color
-        for py in range(
-            max(0, int(y - radius - scale_factor * 2)),
-            min(self.config.height, int(y + radius + scale_factor * 2)),
-        ):
-            for px in range(
-                max(0, int(x - radius - scale_factor * 2)),
-                min(self.config.width, int(x + radius + scale_factor * 2)),
-            ):
-                mask_value = circle_mask.getpixel((px, py))
-                if mask_value > 0:
-                    circle_overlay.putpixel((px, py), (*player_color[:3], mask_value))
-
-        # Overlay the player circle on the main image
+        circle_draw = ImageDraw.Draw(circle_overlay, "RGBA")
+        circle_draw.ellipse(
+            [x - radius, y - radius, x + radius, y + radius],
+            fill=player_color,
+            outline="black",
+            width=int(2 * scale_factor),
+        )
         self.img = Image.alpha_composite(self.img, circle_overlay)
-        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # Draw avatar inside the circle
         self._draw_avatar_in_circle(x, y, radius)
 
-        # Draw border with anti-aliasing
-        border_mask = Image.new("L", (self.config.width, self.config.height), 0)
-        border_mask_draw = ImageDraw.Draw(border_mask)
-
-        # Draw just the outline on the border mask
-        border_width = 2 * scale_factor
-        border_mask_draw.ellipse(
-            [
-                x - radius,
-                y - radius,
-                x + radius,
-                y + radius,
-            ],
-            fill=0,
-            outline=255,
-            width=border_width,
-        )
-
-        # Apply slight blur for smoother border
-        border_mask = border_mask.filter(
-            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-        )
-
-        # Create a border overlay
+        # Simple black border
         border_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
-
-        # Fill the border with black
-        for py in range(
-            max(0, int(y - radius - scale_factor * 3)),
-            min(self.config.height, int(y + radius + scale_factor * 3)),
-        ):
-            for px in range(
-                max(0, int(x - radius - scale_factor * 3)),
-                min(self.config.width, int(x + radius + scale_factor * 3)),
-            ):
-                mask_value = border_mask.getpixel((px, py))
-                if mask_value > 0:
-                    border_overlay.putpixel((px, py), (0, 0, 0, mask_value))
-
-        # Overlay the border on the main image
+        border_draw = ImageDraw.Draw(border_overlay, "RGBA")
+        border_draw.ellipse(
+            [x - radius, y - radius, x + radius, y + radius],
+            outline="black",
+            width=int(2 * scale_factor),
+        )
         self.img = Image.alpha_composite(self.img, border_overlay)
-        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
     def _draw_player_rectangle(self, x, y, width, height, player_color, player):
         """Draw a rounded rectangle with player position and stack information."""
@@ -297,94 +237,27 @@ class PlayerDrawer:
         text_color = self.config.text_color
         corner_radius = height * 0.3  # Rounded corners
 
-        # Create a mask for the rounded rectangle
-        rect_mask = Image.new("L", (self.config.width, self.config.height), 0)
-        rect_mask_draw = ImageDraw.Draw(rect_mask)
-
-        # Draw rounded rectangle on the mask
         left = x - width / 2
         top = y - height / 2
         right = x + width / 2
         bottom = y + height / 2
 
-        # Draw the rectangle with rounded corners
-        rect_mask_draw.rounded_rectangle(
-            [left, top, right, bottom],
-            radius=corner_radius,
-            fill=255,
-        )
-
-        # Apply slight blur for smoother edges
-        rect_mask = rect_mask.filter(
-            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-        )
-
-        # Create a rectangle overlay
+        # Use Pillow primitives instead of pixel loops for speed
         rect_overlay = Image.new(
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
-
-        # Fill the rectangle with the player color
-        for py in range(
-            max(0, int(top - scale_factor * 2)),
-            min(self.config.height, int(bottom + scale_factor * 2)),
-        ):
-            for px in range(
-                max(0, int(left - scale_factor * 2)),
-                min(self.config.width, int(right + scale_factor * 2)),
-            ):
-                mask_value = rect_mask.getpixel((px, py))
-                if mask_value > 0:
-                    # Make rectangle slightly darker than the circle
-                    color_r = max(0, int(player_color[0] * 0.9))
-                    color_g = max(0, int(player_color[1] * 0.9))
-                    color_b = max(0, int(player_color[2] * 0.9))
-                    rect_overlay.putpixel(
-                        (px, py), (color_r, color_g, color_b, mask_value)
-                    )
-
-        # Overlay the rectangle on the main image
-        self.img = Image.alpha_composite(self.img, rect_overlay)
-        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
-
-        # Draw rectangle border
-        border_mask = Image.new("L", (self.config.width, self.config.height), 0)
-        border_mask_draw = ImageDraw.Draw(border_mask)
-
-        # Draw just the outline on the border mask
-        border_width = 2 * scale_factor
-        border_mask_draw.rounded_rectangle(
+        rect_draw = ImageDraw.Draw(rect_overlay, "RGBA")
+        darker = tuple(max(0, int(c * 0.9)) for c in player_color[:3])
+        rect_draw.rounded_rectangle(
             [left, top, right, bottom],
             radius=corner_radius,
-            fill=0,
-            outline=255,
-            width=border_width,
+            fill=darker,
+            outline="black",
+            width=int(2 * scale_factor),
         )
 
-        # Apply slight blur for smoother border
-        border_mask = border_mask.filter(
-            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-        )
-
-        # Create a border overlay
-        border_overlay = Image.new(
-            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
-        )  # Fill the border with black
-        for py in range(
-            max(0, int(top - scale_factor * 3)),
-            min(self.config.height, int(bottom + scale_factor * 3)),
-        ):
-            for px in range(
-                max(0, int(left - scale_factor * 3)),
-                min(self.config.width, int(right + scale_factor * 3)),
-            ):
-                mask_value = border_mask.getpixel((px, py))
-                if mask_value > 0:
-                    border_overlay.putpixel((px, py), (0, 0, 0, mask_value))
-
-        # Overlay the border on the main image
-        self.img = Image.alpha_composite(self.img, border_overlay)
-        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+        self.img = Image.alpha_composite(self.img, rect_overlay)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # Draw player information inside the rectangle
         self._draw_player_info(x, y, player, height)
@@ -606,38 +479,12 @@ class PlayerDrawer:
         avatar_mask_draw = ImageDraw.Draw(avatar_mask)
         avatar_mask_draw.ellipse([0, 0, avatar_size, avatar_size], fill=255)
 
-        # Apply slight blur for smoother edges
-        avatar_mask = avatar_mask.filter(
-            ImageFilter.GaussianBlur(radius=scale_factor * 0.3)
-        )
-
-        # Create avatar overlay
-        avatar_overlay = Image.new(
-            "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
-        )
-
         # Calculate position to center the avatar
         avatar_x = int(x - avatar_radius)
         avatar_y = int(y - avatar_radius - 35)
 
-        # Apply the circular mask to the avatar
-        avatar_masked = Image.new("RGBA", (avatar_size, avatar_size), (0, 0, 0, 0))
-        for py in range(avatar_size):
-            for px in range(avatar_size):
-                mask_value = avatar_mask.getpixel((px, py))
-                if mask_value > 0:
-                    avatar_pixel = avatar_resized.getpixel((px, py))
-                    # Apply mask to alpha channel
-                    alpha = int(
-                        (avatar_pixel[3] if len(avatar_pixel) == 4 else 255)
-                        * mask_value
-                        / 255
-                    )
-                    avatar_masked.putpixel((px, py), (*avatar_pixel[:3], alpha))
+        # Apply the mask directly using Pillow operations
+        avatar_resized.putalpha(avatar_mask)
 
-        # Paste the masked avatar onto the overlay
-        avatar_overlay.paste(avatar_masked, (avatar_x, avatar_y), avatar_masked)
-
-        # Composite the avatar overlay onto the main image
-        self.img = Image.alpha_composite(self.img, avatar_overlay)
-        self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
+        self.img.alpha_composite(avatar_resized, (avatar_x, avatar_y))
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
