@@ -171,11 +171,19 @@ class PokerTableVisualizer:
         )
         rect_draw = ImageDraw.Draw(rect_overlay, "RGBA")
         overlay_player_drawer = PlayerDrawer(
-            self.config, self.game_data, rect_overlay, rect_draw
+            self.config,
+            self.game_data,
+            rect_overlay,
+            rect_draw,
         )
         overlay_player_drawer.set_fonts(
-            self.title_font, self.player_font, self.card_font
+            self.title_font,
+            self.player_font,
+            self.card_font,
         )
+        # Compute player positions without drawing circles
+        overlay_player_drawer.draw_player_circles(compute_only=True)
+        # Now draw only the rectangles onto the overlay
         rect_overlay, rect_draw = overlay_player_drawer.draw_player_rectangles(
             draw_info=False
         )

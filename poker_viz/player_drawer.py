@@ -77,13 +77,20 @@ class PlayerDrawer:
 
         return self.img, self.draw
 
-    def draw_player_circles(self):
-        """Draw all player background circles around the table."""
+    def draw_player_circles(self, compute_only=False):
+        """Draw all player background circles around the table or just compute positions.
+
+        Parameters
+        ----------
+        compute_only : bool, optional
+            If ``True`` only compute the player positions without drawing the
+            circles. This is useful when generating a separate overlay that
+            should only contain the rectangles."""
         # Get position mapping
         position_to_seat = self.game_data.get_position_mapping()
 
         # Store player info for later use in draw_player_rectangles
-        self.player_positions = []  # Draw each player's background circle
+        self.player_positions = []
         for player in self.game_data.players:
             position = player.get("position")
             is_hero = player.get("is_hero", False)
@@ -130,13 +137,14 @@ class PlayerDrawer:
                 }
             )
 
-            # Draw just the background circle
-            self._draw_background_circle(
-                x,
-                y - 0.8 * self.config.player_radius,
-                self.config.player_radius,
-                player_color,
-            )
+            if not compute_only:
+                # Draw just the background circle
+                self._draw_background_circle(
+                    x,
+                    y - 0.8 * self.config.player_radius,
+                    self.config.player_radius,
+                    player_color,
+                )
 
         return self.img, self.draw
 
