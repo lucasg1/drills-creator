@@ -106,6 +106,11 @@ class PokerTableVisualizer:
         # Template image for static elements
         self.template_image = None
 
+        # Cached layers for player graphics
+        self.circle_layer = None
+        self.rectangle_layer = None
+        self.player_signature = None
+
     def create_template(self):
         """Create a template image with static elements (table, background, logo)"""
         # Reset the image and draw objects
@@ -154,76 +159,159 @@ class PokerTableVisualizer:
         # Reinitialize all drawers with the current card values
         self._init_drawers()
 
+    def _compute_player_signature(self):
+        """Return a tuple uniquely identifying the current players."""
+        return tuple(
+            (
+                p.get("position"),
+                p.get("current_stack"),
+                p.get("is_dealer"),
+                p.get("is_active"),
+                p.get("is_folded"),
+                p.get("is_hero"),
+            )
+            for p in self.game_data.players
+        )
+
+    def _create_player_layers(self):
+        """Pre-render player circles and rectangles for faster reuse."""
+        base = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        base_draw = ImageDraw.Draw(base, "RGBA")
+        temp_drawer = PlayerDrawer(self.config, self.game_data, base, base_draw)
+        temp_drawer.set_fonts(self.title_font, self.player_font, self.card_font)
+
+        # Draw circles first and store the result
+        temp_drawer.draw_player_circles()
+        self.circle_layer = base.copy()
+
+        # Draw rectangles on a new layer using stored positions
+        rect_layer = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        temp_drawer.img = rect_layer
+        temp_drawer.draw = ImageDraw.Draw(rect_layer, "RGBA")
+        temp_drawer.draw_player_rectangles()
+        self.rectangle_layer = rect_layer
+
+        # Record the current player signature
+        self.player_signature = self._compute_player_signature()
+
     def create_visualization(self):
+        import time
         """Create the poker table visualization."""
+        start_total = time.time()
+
         # Refresh the visualizer's state when reusing it
+        refresh_start = time.time()
         self.refresh()
+        refresh_time = time.time() - refresh_start
 
         # If we don't have a template yet, create one
+        template_time = 0
         if not self.template_image:
+            template_start = time.time()
             self.create_template()
             self.refresh()  # Refresh again with the template as a base
+            template_time = time.time() - template_start
 
         # Update drawer objects with the current image and draw objects
-        self.player_drawer.img = self.img
-        self.player_drawer.draw = self.draw
+        update_start = time.time()
         self.card_drawer.img = self.img
         self.card_drawer.draw = self.draw
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
+        update_time = time.time() - update_start
 
-        # Draw players - this now draws only the background circles
-        player_circles_img, player_circles_draw = (
-            self.player_drawer.draw_player_circles()
-        )
-        self.img = player_circles_img
-        self.draw = player_circles_draw
+        # Generate player layers if needed
+        layers_time = 0
+        current_sig = self._compute_player_signature()
+        if (
+            self.circle_layer is None
+            or self.rectangle_layer is None
+            or current_sig != self.player_signature
+        ):
+            layers_start = time.time()
+            self._create_player_layers()
+            layers_time = time.time() - layers_start
+
+        # Composite background circles
+        circles_start = time.time()
+        self.img = Image.alpha_composite(self.img, self.circle_layer)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+        circles_time = time.time() - circles_start
 
         # Update card drawer with the current image
+        update_cards_start = time.time()
         self.card_drawer.img = self.img
         self.card_drawer.draw = self.draw
+        update_cards_time = time.time() - update_cards_start
 
         # Draw cards for non-hero players still in the hand
+        other_cards_start = time.time()
         other_cards_img, other_cards_draw = self.card_drawer.draw_player_cards()
         self.img = other_cards_img
         self.draw = other_cards_draw
+        other_cards_time = time.time() - other_cards_start
 
         # Draw hero cards if provided
+        hero_cards_time = 0
         if self.card1 and self.card2:
+            hero_cards_start = time.time()
             cards_img, cards_draw = self.card_drawer.draw_hero_cards()
             self.img = cards_img
             self.draw = cards_draw
+            hero_cards_time = time.time() - hero_cards_start
 
-        # Update player drawer with the current image after cards are drawn
-        self.player_drawer.img = self.img
-        self.player_drawer.draw = self.draw
-
-        # Draw player info rectangles on top of the circles and cards
-        player_rectangles_img, player_rectangles_draw = (
-            self.player_drawer.draw_player_rectangles()
-        )
-        self.img = player_rectangles_img
-        self.draw = player_rectangles_draw
+        # Composite player rectangles on top of the cards
+        rect_start = time.time()
+        self.img = Image.alpha_composite(self.img, self.rectangle_layer)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
+        rect_time = time.time() - rect_start
 
         # Update chip drawer with the current image
+        update_chips_start = time.time()
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
+        update_chips_time = time.time() - update_chips_start
 
         # Draw player chips
+        chips_start = time.time()
         chips_img, chips_draw = self.chip_drawer.draw_player_chips()
         self.img = chips_img
         self.draw = chips_draw
+        chips_time = time.time() - chips_start
 
-        # Skip Gaussian blur for performance optimization
-        # Directly downsample to the original base resolution with a faster filter
+        # Resize if needed
+        resize_time = 0
         if hasattr(self.config, "scale_factor") and self.config.scale_factor > 1:
+            resize_start = time.time()
             self.img = self.img.resize(
                 (self.config.base_width, self.config.base_height), Image.BICUBIC
             )
+            resize_time = time.time() - resize_start
 
         # Save the image
+        save_start = time.time()
         self.img.save(self.output_path, optimize=True)
+        save_time = time.time() - save_start
+
+        total_time = time.time() - start_total
+
+        # Print timing information
         print(f"Poker table visualization saved to {self.output_path}")
+        print(f"Performance breakdown:")
+        print(f"  - Refresh: {refresh_time:.4f}s")
+        print(f"  - Template creation: {template_time:.4f}s")
+        print(f"  - Update drawers: {update_time:.4f}s")
+        print(f"  - Create player layers: {layers_time:.4f}s")
+        print(f"  - Composite circles: {circles_time:.4f}s")
+        print(f"  - Update card drawer: {update_cards_time:.4f}s")
+        print(f"  - Draw other cards: {other_cards_time:.4f}s")
+        print(f"  - Draw hero cards: {hero_cards_time:.4f}s")
+        print(f"  - Composite rectangles: {rect_time:.4f}s")
+        print(f"  - Update chip drawer: {update_chips_time:.4f}s")
+        print(f"  - Draw chips: {chips_time:.4f}s")
+        print(f"  - Resize image: {resize_time:.4f}s")
+        print(f"  - Save image: {save_time:.4f}s")
+        print(f"  - Total time: {total_time:.4f}s")
 
         return self.output_path
 
@@ -239,6 +327,7 @@ def load_json_data(json_file):
 def main():
     """Main function to run the poker table visualizer."""
     import json
+    import time
 
     # Path to the JSON file
     json_file = "poker_solutions/MTTGeneral_ICM8m200PTSTART/depth_100_125/preflop/no_actions/UTG/hero_UTG_22.json"
