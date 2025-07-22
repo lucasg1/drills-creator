@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Global cache for visualizer instances
-# Keys will be (game_type, num_players)
+# Keys will be (game_type, num_players, hero_position)
 visualizer_cache = {}
 
 
@@ -65,11 +65,15 @@ def init_visualizer_cache():
             json_text = clear_spot_solution_json(json_path)
             json_data = json.loads(json_text)
 
-            # Get the number of players
+            # Get the number of players and hero position
             num_players = len(json_data["game"]["players"])
+            hero_position = next(
+                (p.get("position") for p in json_data["game"]["players"] if p.get("is_hero")),
+                None,
+            )
 
             # Create a visualizer instance for this configuration if it doesn't exist
-            cache_key = (game_type, num_players)
+            cache_key = (game_type, num_players, hero_position)
             if cache_key not in visualizer_cache:
                 logger.info(
                     f"Creating visualizer for game type {game_type} with {num_players} players"
@@ -216,35 +220,32 @@ def create_visualization_from_json(hand_json):
                 json_text = clear_spot_solution_json(original_file)
                 original_json = json.loads(json_text)
 
-                # Get the number of players
+                # Get the number of players and hero position
                 num_players = len(original_json["game"]["players"])
+                hero_position = next(
+                    (p.get("position") for p in original_json["game"]["players"] if p.get("is_hero")),
+                    None,
+                )
 
-                # Try to get a cached visualizer for this game type and player count
-                cache_key = (game_type, num_players)
+                # Try to get a cached visualizer for this configuration
+                cache_key = (game_type, num_players, hero_position)
 
                 if cache_key in visualizer_cache:
                     # Use the cached visualizer
                     logger.info(
-                        f"Using cached visualizer for {game_type} with {num_players} players"
+                        f"Using cached visualizer for {game_type} with {num_players} players and hero {hero_position}"
                     )
                     visualizer = visualizer_cache[cache_key]
 
-                    # Update the visualizer with the new cards and output path
+                    # Update with the new data and output path
                     visualizer.card1 = card1
                     visualizer.card2 = card2
                     visualizer.output_path = output_path
-
-                    # If we have a different solution file, update that too
-                    if visualizer.solution_path != original_file:
-                        visualizer.solution_path = original_file
-                        visualizer.data = original_json
-                        # Reinitialize game data with the new solution
-                        visualizer.game_data.json_data = original_json
-                        visualizer.game_data.solution_path = original_file
+                    visualizer.game_data.update_data(original_json, original_file)
                 else:
                     # Create a new visualizer and add it to the cache
                     logger.info(
-                        f"Creating new visualizer for {game_type} with {num_players} players"
+                        f"Creating new visualizer for {game_type} with {num_players} players and hero {hero_position}"
                     )
                     visualizer = PokerTableVisualizer(
                         original_json,
@@ -254,7 +255,6 @@ def create_visualization_from_json(hand_json):
                         solution_path=original_file,
                         scale_factor=1,
                     )
-                    # Create the template for static elements
                     visualizer.create_template()
                     visualizer_cache[cache_key] = visualizer
 

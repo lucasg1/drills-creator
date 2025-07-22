@@ -69,6 +69,7 @@ class PokerTableVisualizer:
 
         # Process game data
         self.game_data = GameDataProcessor(json_data, solution_path=solution_path)
+        self.hero_position = self.game_data.hero.get("position") if self.game_data.hero else None
 
         # Initialize drawers
         self._init_drawers()
@@ -148,18 +149,7 @@ class PokerTableVisualizer:
         template_player_drawer.img = template
         template_player_drawer.draw = template_draw
 
-        # --------------------------------------------------------------
-        # Villain cards are drawn between the circle and the rectangle
-        # --------------------------------------------------------------
-        template_card_drawer = CardDrawer(
-            self.config, self.game_data, template, template_draw, self.cards_folder
-        )
-        template_card_drawer.set_fonts(
-            self.title_font, self.player_font, self.card_font
-        )
-        template, template_draw = template_card_drawer.draw_player_cards()
-
-        # Save base template without rectangles for later reuse
+        # Save base template (only circles and table) for later reuse
         self.template_base = template.copy()
 
         # --------------------------------------------------------------
@@ -189,6 +179,11 @@ class PokerTableVisualizer:
         )
         self.rectangles_overlay = rect_overlay
 
+        # Store hero position for cache management
+        self.hero_position = (
+            self.game_data.hero.get("position") if self.game_data.hero else None
+        )
+
         # Compose a full template image for cases where no hero cards are drawn
         template = Image.alpha_composite(self.template_base, self.rectangles_overlay)
         template_draw = ImageDraw.Draw(template, "RGBA")
@@ -212,8 +207,8 @@ class PokerTableVisualizer:
         self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # Reset the game data if it's been changed
-        if hasattr(self, "game_data") and hasattr(self.game_data, "process_data"):
-            self.game_data.process_data()
+        if hasattr(self, "game_data") and hasattr(self.game_data, "process_game_data"):
+            self.game_data.process_game_data()
 
         # Reinitialize all drawers with the current card values
         self._init_drawers()
@@ -235,6 +230,11 @@ class PokerTableVisualizer:
         self.card_drawer.draw = self.draw
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
+
+        # Draw villain cards (card backs) for active players
+        cards_img, cards_draw = self.card_drawer.draw_player_cards()
+        self.img = cards_img
+        self.draw = cards_draw
 
         # Draw hero cards if provided
         if self.card1 and self.card2:
