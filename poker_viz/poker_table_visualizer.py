@@ -3,7 +3,6 @@ Main module for poker table visualization.
 """
 
 import os
-import io
 from PIL import Image, ImageDraw, ImageFilter
 
 from .config import PokerTableConfig
@@ -107,6 +106,11 @@ class PokerTableVisualizer:
         # Template image for static elements
         self.template_image = None
 
+        # Cached layers for player graphics
+        self.circle_layer = None
+        self.rectangle_layer = None
+        self.player_signature = None
+
     def create_template(self):
         """Create a template image with static elements (table, background, logo)"""
         # Reset the image and draw objects
@@ -155,6 +159,41 @@ class PokerTableVisualizer:
         # Reinitialize all drawers with the current card values
         self._init_drawers()
 
+    def _compute_player_signature(self):
+        """Return a tuple uniquely identifying the current players."""
+        return tuple(
+            (
+                p.get("position"),
+                p.get("current_stack"),
+                p.get("is_dealer"),
+                p.get("is_active"),
+                p.get("is_folded"),
+                p.get("is_hero"),
+            )
+            for p in self.game_data.players
+        )
+
+    def _create_player_layers(self):
+        """Pre-render player circles and rectangles for faster reuse."""
+        base = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        base_draw = ImageDraw.Draw(base, "RGBA")
+        temp_drawer = PlayerDrawer(self.config, self.game_data, base, base_draw)
+        temp_drawer.set_fonts(self.title_font, self.player_font, self.card_font)
+
+        # Draw circles first and store the result
+        temp_drawer.draw_player_circles()
+        self.circle_layer = base.copy()
+
+        # Draw rectangles on a new layer using stored positions
+        rect_layer = Image.new("RGBA", (self.config.width, self.config.height), (0, 0, 0, 0))
+        temp_drawer.img = rect_layer
+        temp_drawer.draw = ImageDraw.Draw(rect_layer, "RGBA")
+        temp_drawer.draw_player_rectangles()
+        self.rectangle_layer = rect_layer
+
+        # Record the current player signature
+        self.player_signature = self._compute_player_signature()
+
     def create_visualization(self):
         """Create the poker table visualization."""
         # Refresh the visualizer's state when reusing it
@@ -166,19 +205,23 @@ class PokerTableVisualizer:
             self.refresh()  # Refresh again with the template as a base
 
         # Update drawer objects with the current image and draw objects
-        self.player_drawer.img = self.img
-        self.player_drawer.draw = self.draw
         self.card_drawer.img = self.img
         self.card_drawer.draw = self.draw
         self.chip_drawer.img = self.img
         self.chip_drawer.draw = self.draw
 
-        # Draw players - this now draws only the background circles
-        player_circles_img, player_circles_draw = (
-            self.player_drawer.draw_player_circles()
-        )
-        self.img = player_circles_img
-        self.draw = player_circles_draw
+        # Generate player layers if needed
+        current_sig = self._compute_player_signature()
+        if (
+            self.circle_layer is None
+            or self.rectangle_layer is None
+            or current_sig != self.player_signature
+        ):
+            self._create_player_layers()
+
+        # Composite background circles
+        self.img = Image.alpha_composite(self.img, self.circle_layer)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # Update card drawer with the current image
         self.card_drawer.img = self.img
@@ -195,16 +238,9 @@ class PokerTableVisualizer:
             self.img = cards_img
             self.draw = cards_draw
 
-        # Update player drawer with the current image after cards are drawn
-        self.player_drawer.img = self.img
-        self.player_drawer.draw = self.draw
-
-        # Draw player info rectangles on top of the circles and cards
-        player_rectangles_img, player_rectangles_draw = (
-            self.player_drawer.draw_player_rectangles()
-        )
-        self.img = player_rectangles_img
-        self.draw = player_rectangles_draw
+        # Composite player rectangles on top of the cards
+        self.img = Image.alpha_composite(self.img, self.rectangle_layer)
+        self.draw = ImageDraw.Draw(self.img, "RGBA")
 
         # Update chip drawer with the current image
         self.chip_drawer.img = self.img
@@ -227,52 +263,6 @@ class PokerTableVisualizer:
         print(f"Poker table visualization saved to {self.output_path}")
 
         return self.output_path
-
-    def create_visualization_bytes(self):
-        """Create the visualization and return PNG bytes without saving."""
-        # Build the image using the same steps as create_visualization
-        self.refresh()
-        if not self.template_image:
-            self.create_template()
-            self.refresh()
-
-        self.player_drawer.img = self.img
-        self.player_drawer.draw = self.draw
-        player_circles_img, player_circles_draw = (
-            self.player_drawer.draw_player_circles()
-        )
-        self.img = player_circles_img
-        self.draw = player_circles_draw
-        self.card_drawer.img = self.img
-        self.card_drawer.draw = self.draw
-        other_cards_img, other_cards_draw = self.card_drawer.draw_player_cards()
-        self.img = other_cards_img
-        self.draw = other_cards_draw
-        if self.card1 and self.card2:
-            cards_img, cards_draw = self.card_drawer.draw_hero_cards()
-            self.img = cards_img
-            self.draw = cards_draw
-        self.player_drawer.img = self.img
-        self.player_drawer.draw = self.draw
-        player_rectangles_img, player_rectangles_draw = (
-            self.player_drawer.draw_player_rectangles()
-        )
-        self.img = player_rectangles_img
-        self.draw = player_rectangles_draw
-        self.chip_drawer.img = self.img
-        self.chip_drawer.draw = self.draw
-        chips_img, chips_draw = self.chip_drawer.draw_player_chips()
-        self.img = chips_img
-        self.draw = chips_draw
-        if hasattr(self.config, "scale_factor") and self.config.scale_factor > 1:
-            self.img = self.img.resize(
-                (self.config.base_width, self.config.base_height), Image.BICUBIC
-            )
-
-        buffer = io.BytesIO()
-        self.img.save(buffer, format="PNG", optimize=True)
-        buffer.seek(0)
-        return buffer
 
 
 def load_json_data(json_file):
