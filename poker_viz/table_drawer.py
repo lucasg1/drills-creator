@@ -79,9 +79,7 @@ class TableDrawer:
             "RGBA", (self.config.width, self.config.height), (0, 0, 0, 0)
         )
         overlay_draw = ImageDraw.Draw(overlay, "RGBA")
-        overlay_draw.rounded_rectangle(
-            [int(x) for x in bbox], radius=int(radius), fill=bg
-        )
+        overlay_draw.rounded_rectangle(bbox, radius=radius, fill=bg)
         if blur:
             overlay = overlay.filter(ImageFilter.GaussianBlur(radius=blur))
 
@@ -191,9 +189,7 @@ class TableDrawer:
             table_bottom + depth + border_thickness + shadow_offset,
         ]
         shadow_draw.rounded_rectangle(
-            [int(x) for x in shadow_bbox],
-            radius=int(radius + border_thickness),
-            fill=(0, 0, 0, 120),
+            shadow_bbox, radius=radius + border_thickness, fill=(0, 0, 0, 120)
         )
         shadow_overlay = shadow_overlay.filter(ImageFilter.GaussianBlur(radius=depth))
         self.img = Image.alpha_composite(self.img, shadow_overlay)
@@ -209,23 +205,17 @@ class TableDrawer:
 
         # Draw the side of the table for the 3D effect
         overlay_draw.rounded_rectangle(
-            [int(x) for x in side_bbox],
-            radius=int(radius + border_thickness),
+            side_bbox,
+            radius=radius + border_thickness,
             fill=wood_color,
         )
-        overlay_draw.rounded_rectangle(
-            [int(x) for x in bottom_bbox], radius=int(radius), fill=darker_color
-        )
+        overlay_draw.rounded_rectangle(bottom_bbox, radius=radius, fill=darker_color)
 
         # Draw the flat wooden border on top
         overlay_draw.rounded_rectangle(
-            [int(x) for x in outer_top_bbox],
-            radius=int(radius + border_thickness),
-            fill=wood_color,
+            outer_top_bbox, radius=radius + border_thickness, fill=wood_color
         )
-        overlay_draw.rounded_rectangle(
-            [int(x) for x in top_bbox], radius=int(radius), fill=table_color
-        )
+        overlay_draw.rounded_rectangle(top_bbox, radius=radius, fill=table_color)
 
         line_width = 2 * scale_factor
 
@@ -236,8 +226,8 @@ class TableDrawer:
         highlight_draw = ImageDraw.Draw(highlight_overlay, "RGBA")
         highlight_width = max(1, border_thickness // 2)
         highlight_draw.rounded_rectangle(
-            [int(x) for x in outer_top_bbox],
-            radius=int(radius + border_thickness),
+            outer_top_bbox,
+            radius=radius + border_thickness,
             outline=wood_light,
             width=highlight_width,
         )
@@ -251,8 +241,8 @@ class TableDrawer:
         mask_draw = ImageDraw.Draw(shadow_mask)
         inner_width = max(1, border_thickness // 2)
         mask_draw.rounded_rectangle(
-            [int(x) for x in top_bbox],
-            radius=int(radius),
+            top_bbox,
+            radius=radius,
             outline=255,
             width=inner_width,
         )
@@ -279,10 +269,10 @@ class TableDrawer:
             top_bbox[3] - accent_inset,
         ]
         overlay_draw.rounded_rectangle(
-            [int(x) for x in accent_bbox],
-            radius=int(radius - accent_inset),
+            accent_bbox,
+            radius=radius - accent_inset,
             outline=(255, 255, 255, 80),
-            width=int(max(1, line_width // 2)),
+            width=max(1, line_width // 2),
         )
 
         logo_path = os.path.join(
@@ -304,16 +294,13 @@ class TableDrawer:
             table_overlay.alpha_composite(logo, (lx, ly))
 
         overlay_draw.rounded_rectangle(
-            [int(x) for x in outer_top_bbox],
-            radius=int(radius + border_thickness),
+            outer_top_bbox,
+            radius=radius + border_thickness,
             outline=(0, 0, 0, 255),
-            width=int(line_width),
+            width=line_width,
         )
         overlay_draw.rounded_rectangle(
-            [int(x) for x in top_bbox],
-            radius=int(radius),
-            outline=(0, 0, 0, 255),
-            width=int(line_width),
+            top_bbox, radius=radius, outline=(0, 0, 0, 255), width=line_width
         )
 
         self.img = Image.alpha_composite(self.img, table_overlay)

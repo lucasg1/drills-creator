@@ -23,7 +23,7 @@ class PokerTableVisualizer:
         card2=None,
         output_path="poker_table.png",
         solution_path=None,
-        scale_factor=1,
+        scale_factor=2,
     ):
         """
         Initialize the poker table visualizer.
@@ -34,7 +34,7 @@ class PokerTableVisualizer:
             card2: Second hero card (e.g., "Kd")
             output_path: Path to save the output image
             solution_path: Path to the solution file (optional)
-            scale_factor: Scale factor for rendering (default: 1)
+            scale_factor: Scale factor for rendering (default: 2)
         """
         self.data = json_data
         self.card1 = card1
@@ -103,66 +103,12 @@ class PokerTableVisualizer:
         self.chip_drawer = ChipDrawer(self.config, self.game_data, self.img, self.draw)
         self.chip_drawer.set_fonts(self.title_font, self.player_font, self.card_font)
 
-        # Template image for static elements
-        self.template_image = None
-
-    def create_template(self):
-        """Create a template image with static elements (table, background, logo)"""
-        # Reset the image and draw objects
-        template = Image.new(
-            "RGBA",
-            (self.config.width, self.config.height),
-            self.config.background_color,
-        )
-        template_draw = ImageDraw.Draw(template, "RGBA")
-
-        # Create a temporary instance of TableDrawer for the template
-        template_table_drawer = TableDrawer(
-            self.config, self.game_data, template, template_draw
-        )
-        template_table_drawer.set_fonts(
-            self.title_font, self.player_font, self.card_font
-        )
-
-        # Draw the table on the template
-        template, _ = template_table_drawer.draw_table()
-
-        # Store the template
-        self.template_image = template
-
-        return self.template_image
-
-    def refresh(self):
-        """Refresh the visualizer's state when reusing it for different hands."""
-        # If we have a template, use it as the starting point
-        if self.template_image:
-            self.img = self.template_image.copy()
-        else:
-            # Otherwise create a new blank image
-            self.img = Image.new(
-                "RGBA",
-                (self.config.width, self.config.height),
-                self.config.background_color,
-            )
-
-        self.draw = ImageDraw.Draw(self.img, "RGBA")
-
-        # Reset the game data if it's been changed
-        if hasattr(self, "game_data") and hasattr(self.game_data, "process_data"):
-            self.game_data.process_data()
-
-        # Reinitialize all drawers with the current card values
-        self._init_drawers()
-
     def create_visualization(self):
         """Create the poker table visualization."""
-        # Refresh the visualizer's state when reusing it
-        self.refresh()
-
-        # If we don't have a template yet, create one
-        if not self.template_image:
-            self.create_template()
-            self.refresh()  # Refresh again with the template as a base
+        # Draw the table
+        table_img, table_draw = self.table_drawer.draw_table()
+        self.img = table_img
+        self.draw = table_draw
 
         # Update drawer objects with the current image and draw objects
         self.player_drawer.img = self.img
@@ -214,15 +160,18 @@ class PokerTableVisualizer:
         self.img = chips_img
         self.draw = chips_draw
 
-        # Skip Gaussian blur for performance optimization
-        # Directly downsample to the original base resolution with a faster filter
+        # Apply a final subtle smoothing filter
+        self.img = self.img.filter(ImageFilter.GaussianBlur(radius=0.5))
+
+        # Downsample to the original base resolution for super-smooth edges
+        # This creates an anti-aliasing effect by averaging neighboring pixels
         if hasattr(self.config, "scale_factor") and self.config.scale_factor > 1:
             self.img = self.img.resize(
-                (self.config.base_width, self.config.base_height), Image.BICUBIC
+                (self.config.base_width, self.config.base_height), Image.LANCZOS
             )
 
         # Save the image
-        self.img.save(self.output_path, optimize=True)
+        self.img.save(self.output_path)
         print(f"Poker table visualization saved to {self.output_path}")
 
         return self.output_path
