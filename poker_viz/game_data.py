@@ -22,6 +22,19 @@ class GameDataProcessor:
         self.parsed_field_left = None
         self.process_game_data()
 
+    def update_data(self, json_data, solution_path=None):
+        """Update the stored JSON data and reprocess it."""
+
+        self.data = json_data
+        if solution_path is not None:
+            self.solution_path = solution_path
+
+        # Clear cached info so it can be recalculated
+        self.parsed_avg_stack = None
+        self.parsed_field_left = None
+
+        self.process_game_data()
+
     def process_game_data(self):
         """Extract relevant information from the JSON data."""
         self.game = self.data.get("game", {})

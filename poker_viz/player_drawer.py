@@ -77,13 +77,20 @@ class PlayerDrawer:
 
         return self.img, self.draw
 
-    def draw_player_circles(self):
-        """Draw all player background circles around the table."""
+    def draw_player_circles(self, compute_only=False):
+        """Draw all player background circles around the table or just compute positions.
+
+        Parameters
+        ----------
+        compute_only : bool, optional
+            If ``True`` only compute the player positions without drawing the
+            circles. This is useful when generating a separate overlay that
+            should only contain the rectangles."""
         # Get position mapping
         position_to_seat = self.game_data.get_position_mapping()
 
         # Store player info for later use in draw_player_rectangles
-        self.player_positions = []  # Draw each player's background circle
+        self.player_positions = []
         for player in self.game_data.players:
             position = player.get("position")
             is_hero = player.get("is_hero", False)
@@ -130,18 +137,27 @@ class PlayerDrawer:
                 }
             )
 
-            # Draw just the background circle
-            self._draw_background_circle(
-                x,
-                y - 0.8 * self.config.player_radius,
-                self.config.player_radius,
-                player_color,
-            )
+            if not compute_only:
+                # Draw just the background circle
+                self._draw_background_circle(
+                    x,
+                    y - 0.8 * self.config.player_radius,
+                    self.config.player_radius,
+                    player_color,
+                )
 
         return self.img, self.draw
 
-    def draw_player_rectangles(self):
-        """Draw all player info rectangles on top of the background circles."""
+    def draw_player_rectangles(self, draw_info=True):
+        """Draw all player rectangles on top of the background circles.
+
+        Parameters
+        ----------
+        draw_info : bool, optional
+            If True also draw the player position and stack text inside each
+            rectangle. When creating a static template this can be disabled so
+            only the heavy shapes are rendered once at start up.
+        """
         # Draw each player's rectangle using stored positions
         if not hasattr(self, "player_positions"):
             # If draw_player_circles wasn't called first, get the positions now
@@ -156,14 +172,46 @@ class PlayerDrawer:
             # Calculate rectangle dimensions
             player_radius = self.config.player_radius
             rect_width = player_radius * 1.8
-            rect_height = player_radius * 1.2  # Draw the rectangle with player info
+            rect_height = player_radius * 1.2
+
             self._draw_player_rectangle(
-                x, y, rect_width, rect_height, player_color, player
+                x,
+                y,
+                rect_width,
+                rect_height,
+                player_color,
+                player,
+                draw_info=draw_info,
             )
 
             # Draw dealer button if this player is the dealer
             if pos_info["is_dealer"]:
                 self._draw_dealer_button(x, y, pos_info.get("seat_index", 0))
+
+        return self.img, self.draw
+
+    def draw_player_text(self):
+        """Draw only the player information text on top of pre-rendered shapes."""
+
+        position_to_seat = self.game_data.get_position_mapping()
+
+        for player in self.game_data.players:
+            position = player.get("position")
+            is_hero = player.get("is_hero", False)
+
+            if is_hero:
+                seat_index = 0
+            elif position in position_to_seat:
+                seat_index = position_to_seat[position]
+            else:
+                seat_index = min(8, len(self.config.seat_positions) - 1)
+
+            x, y = self._get_safe_seat_position(seat_index)
+
+            player_radius = self.config.player_radius
+            rect_height = player_radius * 1.2
+
+            self._draw_player_info(x, y, player, rect_height)
 
         return self.img, self.draw
 
@@ -291,8 +339,19 @@ class PlayerDrawer:
         self.img = Image.alpha_composite(self.img, border_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
 
-    def _draw_player_rectangle(self, x, y, width, height, player_color, player):
-        """Draw a rounded rectangle with player position and stack information."""
+    def _draw_player_rectangle(
+        self, x, y, width, height, player_color, player, draw_info=True
+    ):
+        """Draw a rounded rectangle for a player.
+
+        Parameters
+        ----------
+        draw_info : bool, optional
+            When ``True`` also render the position and stack text inside the
+            rectangle. This allows the heavy rectangle shapes to be rendered
+            once for a template and the text to be drawn later when generating
+            images.
+        """
         scale_factor = self.config.scale_factor
         text_color = self.config.text_color
         corner_radius = height * 0.3  # Rounded corners
@@ -386,8 +445,9 @@ class PlayerDrawer:
         self.img = Image.alpha_composite(self.img, border_overlay)
         self.draw = ImageDraw.Draw(self.img, "RGBA")  # Recreate the draw object
 
-        # Draw player information inside the rectangle
-        self._draw_player_info(x, y, player, height)
+        # Draw player information inside the rectangle if requested
+        if draw_info:
+            self._draw_player_info(x, y, player, height)
 
     def _draw_player_info(self, x, y, player, rect_height):
         """Draw player position and stack information inside the rectangle."""

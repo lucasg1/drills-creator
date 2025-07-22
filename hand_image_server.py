@@ -18,12 +18,12 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Global cache for visualizer instances
-# Keys will be (game_type, num_players)
+# Keys will be (num_players, hero_position)
 visualizer_cache = {}
 
 
 def init_visualizer_cache():
-    """Initialize the visualizer cache with common configurations."""
+    """Preload visualizers for every hero position for 8 and 9 players."""
     global visualizer_cache
 
     logger.info("Initializing PokerTableVisualizer cache...")
@@ -36,70 +36,118 @@ def init_visualizer_cache():
         )
         return
 
-    # Find all available game types
-    game_types = [d for d in solutions_dir.iterdir() if d.is_dir()]
+    # Positions we want to cover for each player count
+    required_positions = {
+        8: ["UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB", "BB"],
+        9: ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"],
+    }
 
-    for game_type_dir in game_types:
-        game_type = game_type_dir.name
-        logger.info(f"Processing game type: {game_type}")
+    found_positions = {8: set(), 9: set()}
+    sample_json = {8: None, 9: None}
 
-        # Find one JSON file to use as a template for this game type
-        json_files = []
-        for root, _, files in os.walk(game_type_dir):
-            for file in files:
-                if file.endswith(".json"):
-                    json_files.append(os.path.join(root, file))
-                    break
-            if json_files:
+    # Walk through all JSON files once
+    for root, _, files in os.walk(solutions_dir):
+        for file in files:
+            if not file.endswith(".json"):
+                continue
+            json_path = os.path.join(root, file)
+            try:
+                json_text = clear_spot_solution_json(json_path)
+                json_data = json.loads(json_text)
+            except Exception:
+                continue
+
+            num_players = len(json_data.get("game", {}).get("players", []))
+            if num_players not in required_positions:
+                continue
+
+            # Remember a sample for this player count in case some positions are missing
+            if sample_json[num_players] is None:
+                sample_json[num_players] = (json_data, json_path)
+
+            hero_position = next(
+                (
+                    p.get("position")
+                    for p in json_data["game"]["players"]
+                    if p.get("is_hero")
+                ),
+                None,
+            )
+
+            if hero_position not in required_positions[num_players]:
+                continue
+
+            cache_key = (num_players, hero_position)
+            if cache_key in visualizer_cache:
+                continue
+
+            temp_output = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+
+            visualizer = PokerTableVisualizer(
+                json_data,
+                "Ah",  # Placeholder cards
+                "Kh",
+                temp_output,
+                solution_path=json_path,
+                scale_factor=1,
+            )
+            visualizer.create_template()
+
+            visualizer_cache[cache_key] = visualizer
+            found_positions[num_players].add(hero_position)
+
+            # Stop early if we covered everything
+            if all(
+                len(found_positions[n]) == len(required_positions[n])
+                for n in required_positions
+            ):
                 break
+        else:
+            continue
+        break
 
-        if not json_files:
-            logger.warning(f"No JSON files found for game type: {game_type}")
+    # Create missing hero positions by modifying a sample JSON
+    for num_players, positions in required_positions.items():
+        missing = set(positions) - found_positions[num_players]
+        if not missing:
             continue
 
-        json_path = json_files[0]
-        logger.info(f"Using template file: {json_path}")
+        sample = sample_json[num_players]
+        if sample is None:
+            logger.warning(
+                f"No sample JSON found for {num_players} players; cannot create templates"
+            )
+            continue
 
-        try:
-            # Load the JSON data
-            json_text = clear_spot_solution_json(json_path)
-            json_data = json.loads(json_text)
+        base_data, base_path = sample
+        for hero_position in missing:
+            data_copy = json.loads(json.dumps(base_data))
 
-            # Get the number of players
-            num_players = len(json_data["game"]["players"])
+            # Remove existing hero flag
+            for p in data_copy["game"]["players"]:
+                p["is_hero"] = False
+            # Set hero on the requested position
+            bb_player = next(
+                (p for p in data_copy["game"]["players"] if p.get("position") == hero_position),
+                None,
+            )
+            if bb_player is None:
+                continue
+            bb_player["is_hero"] = True
 
-            # Create a visualizer instance for this configuration if it doesn't exist
-            cache_key = (game_type, num_players)
-            if cache_key not in visualizer_cache:
-                logger.info(
-                    f"Creating visualizer for game type {game_type} with {num_players} players"
-                )
-                # Create a temporary file that won't be used
-                temp_output = tempfile.NamedTemporaryFile(
-                    suffix=".png", delete=False
-                ).name
-
-                # Initialize the visualizer with placeholder cards
-                visualizer = PokerTableVisualizer(
-                    json_data,
-                    "Ah",  # Placeholder cards
-                    "Kh",
-                    temp_output,
-                    solution_path=json_path,
-                    scale_factor=1,
-                )
-
-                # Create the template for static elements
-                logger.info(
-                    f"Creating template for {game_type} with {num_players} players"
-                )
-                visualizer.create_template()
-
-                # Store in cache
-                visualizer_cache[cache_key] = visualizer
-
-        except Exception as e:
-            logger.error(f"Error initializing visualizer for {game_type}: {e}")
+            temp_output = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+            visualizer = PokerTableVisualizer(
+                data_copy,
+                "Ah",
+                "Kh",
+                temp_output,
+                solution_path=base_path,
+                scale_factor=1,
+            )
+            visualizer.create_template()
+            cache_key = (num_players, hero_position)
+            visualizer_cache[cache_key] = visualizer
+            found_positions[num_players].add(hero_position)
 
     logger.info(
         f"Visualizer cache initialized with {len(visualizer_cache)} configurations"
@@ -216,35 +264,32 @@ def create_visualization_from_json(hand_json):
                 json_text = clear_spot_solution_json(original_file)
                 original_json = json.loads(json_text)
 
-                # Get the number of players
+                # Get the number of players and hero position
                 num_players = len(original_json["game"]["players"])
+                hero_position = next(
+                    (p.get("position") for p in original_json["game"]["players"] if p.get("is_hero")),
+                    None,
+                )
 
-                # Try to get a cached visualizer for this game type and player count
-                cache_key = (game_type, num_players)
+                # Try to get a cached visualizer for this configuration
+                cache_key = (num_players, hero_position)
 
                 if cache_key in visualizer_cache:
                     # Use the cached visualizer
                     logger.info(
-                        f"Using cached visualizer for {game_type} with {num_players} players"
+                        f"Using cached visualizer for {num_players} players and hero {hero_position}"
                     )
                     visualizer = visualizer_cache[cache_key]
 
-                    # Update the visualizer with the new cards and output path
+                    # Update with the new data and output path
                     visualizer.card1 = card1
                     visualizer.card2 = card2
                     visualizer.output_path = output_path
-
-                    # If we have a different solution file, update that too
-                    if visualizer.solution_path != original_file:
-                        visualizer.solution_path = original_file
-                        visualizer.data = original_json
-                        # Reinitialize game data with the new solution
-                        visualizer.game_data.json_data = original_json
-                        visualizer.game_data.solution_path = original_file
+                    visualizer.game_data.update_data(original_json, original_file)
                 else:
                     # Create a new visualizer and add it to the cache
                     logger.info(
-                        f"Creating new visualizer for {game_type} with {num_players} players"
+                        f"Creating new visualizer for {num_players} players and hero {hero_position}"
                     )
                     visualizer = PokerTableVisualizer(
                         original_json,
@@ -254,7 +299,6 @@ def create_visualization_from_json(hand_json):
                         solution_path=original_file,
                         scale_factor=1,
                     )
-                    # Create the template for static elements
                     visualizer.create_template()
                     visualizer_cache[cache_key] = visualizer
 
