@@ -1,0 +1,14 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "drills-creator",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": "8777",
+      "HostPort": "80"
+    }
+  ],
+  "Logging": "/var/log/eb-docker/containers/eb-current-app"
+}
