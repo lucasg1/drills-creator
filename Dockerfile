@@ -54,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8777/health || exit 1
 
 # Run with gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:8777", "--workers", "4", "--timeout", "120", "--worker-class", "sync", "hand_image_server:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8777", "--workers", "4", "--timeout", "120", "--preload" ,"--worker-class", "sync", "hand_image_server:app"]
